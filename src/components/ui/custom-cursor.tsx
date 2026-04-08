@@ -96,7 +96,9 @@ export function CustomCursor() {
           width: 40,
           height: 40,
           borderRadius: "50%",
-          border: "1px solid rgba(255,255,255,0.5)",
+          borderWidth: 1,
+          borderStyle: "solid",
+          borderColor: "rgba(255,255,255,0.5)",
           transition: "width 0.4s cubic-bezier(0.25,0.46,0.45,0.94), height 0.4s cubic-bezier(0.25,0.46,0.45,0.94), border-color 0.3s, opacity 0.3s",
           ...(isHovering ? {
             width: 64,
