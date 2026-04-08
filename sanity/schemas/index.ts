@@ -1,0 +1,83 @@
+// ============================================
+// SANITY SCHEMAS FOR MUSE
+// Add these to your Sanity Studio schemaTypes
+// ============================================
+
+export const caseStudySchema = {
+  name: "caseStudy",
+  title: "Case Study",
+  type: "document",
+  fields: [
+    { name: "title", title: "Title", type: "string", validation: (r: any) => r.required() },
+    { name: "slug", title: "Slug", type: "slug", options: { source: "title" } },
+    { name: "client", title: "Client Name", type: "string" },
+    { name: "excerpt", title: "Excerpt", type: "text", rows: 2 },
+    { name: "year", title: "Year", type: "number" },
+    { name: "color", title: "Accent Color (hex)", type: "string", initialValue: "#C8956C" },
+    { name: "coverImage", title: "Cover Image", type: "image", options: { hotspot: true } },
+    { name: "gallery", title: "Gallery", type: "array", of: [{ type: "image", options: { hotspot: true }, fields: [{ name: "alt", type: "string" }, { name: "caption", type: "string" }] }] },
+    { name: "services", title: "Services", type: "array", of: [{ type: "reference", to: [{ type: "service" }] }] },
+    { name: "challenge", title: "The Challenge", type: "array", of: [{ type: "block" }] },
+    { name: "approach", title: "Our Approach", type: "array", of: [{ type: "block" }] },
+    { name: "results", title: "Results", type: "array", of: [{ type: "block" }] },
+    { name: "testimonial", title: "Testimonial", type: "object", fields: [
+      { name: "quote", type: "text" },
+      { name: "author", type: "string" },
+      { name: "role", type: "string" },
+    ]},
+    { name: "nextProject", title: "Next Project", type: "reference", to: [{ type: "caseStudy" }] },
+  ],
+};
+
+export const serviceSchema = {
+  name: "service",
+  title: "Service",
+  type: "document",
+  fields: [
+    { name: "title", title: "Title", type: "string" },
+    { name: "slug", title: "Slug", type: "slug", options: { source: "title" } },
+    { name: "description", title: "Description", type: "text" },
+    { name: "icon", title: "Icon Name", type: "string" },
+    { name: "features", title: "Features", type: "array", of: [{ type: "string" }] },
+    { name: "order", title: "Sort Order", type: "number" },
+  ],
+};
+
+export const teamMemberSchema = {
+  name: "teamMember",
+  title: "Team Member",
+  type: "document",
+  fields: [
+    { name: "name", title: "Name", type: "string" },
+    { name: "role", title: "Role", type: "string" },
+    { name: "bio", title: "Bio", type: "text" },
+    { name: "photo", title: "Photo", type: "image", options: { hotspot: true } },
+    { name: "social", title: "Social Links", type: "object", fields: [
+      { name: "linkedin", type: "url" },
+      { name: "twitter", type: "url" },
+      { name: "dribbble", type: "url" },
+    ]},
+    { name: "order", title: "Sort Order", type: "number" },
+  ],
+};
+
+export const homepageSchema = {
+  name: "homepage",
+  title: "Homepage",
+  type: "document",
+  fields: [
+    { name: "heroHeadline", title: "Hero Headline", type: "string" },
+    { name: "heroSubline", title: "Hero Subline", type: "text", rows: 2 },
+    { name: "featuredWork", title: "Featured Work", type: "array", of: [{ type: "reference", to: [{ type: "caseStudy" }] }] },
+    { name: "clientLogos", title: "Client Logos", type: "array", of: [{ type: "image", fields: [{ name: "alt", type: "string" }] }] },
+    { name: "testimonials", title: "Testimonials", type: "array", of: [{
+      type: "object",
+      fields: [
+        { name: "quote", type: "text" },
+        { name: "author", type: "string" },
+        { name: "role", type: "string" },
+        { name: "company", type: "string" },
+      ],
+    }]},
+  ],
+};
