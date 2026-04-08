@@ -95,6 +95,7 @@ export default function CaseStudyPage() {
 
   const color = project.color ?? "#C8956C";
   const hasRichContent = usingSanity && (project.challenge || project.approach || project.results);
+  const projectServices = project.services ?? [];
 
   return (
     <>
@@ -114,10 +115,10 @@ export default function CaseStudyPage() {
               <span className="uppercase tracking-[0.2em]">{project.client}</span>
               <span className="h-1 w-1 rounded-full bg-[var(--color-text-dim)]" />
               <span>{project.year}</span>
-              {project.services?.length > 0 && (
+              {projectServices.length > 0 && (
                 <>
                   <span className="h-1 w-1 rounded-full bg-[var(--color-text-dim)]" />
-                  <span>{project.services.map((s: any) => s.title).join(", ")}</span>
+                  <span>{projectServices.map((s) => s.title).join(", ")}</span>
                 </>
               )}
             </div>
