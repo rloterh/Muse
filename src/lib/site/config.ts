@@ -1,4 +1,4 @@
-import type { ModerationTask, SiteSettings, ViewerRole, ViewerSession } from "@/types";
+import type { ModerationTask, SiteSettings } from "@/types";
 
 export const siteSettings: SiteSettings = {
   brandName: "Muse",
@@ -82,49 +82,6 @@ export const serviceOptions = [
   "Motion & 3D",
   "Product Design",
 ];
-
-const sessionPermissions: Record<Exclude<ViewerRole, "guest">, string[]> = {
-  client: ["view-work", "submit-inquiry"],
-  editor: ["view-work", "submit-inquiry", "review-content", "edit-cms"],
-  admin: [
-    "view-work",
-    "submit-inquiry",
-    "review-content",
-    "edit-cms",
-    "manage-users",
-    "view-admin",
-  ],
-};
-
-export const demoSessions: Record<Exclude<ViewerRole, "guest">, ViewerSession> = {
-  client: {
-    id: "viewer-client",
-    name: "Jordan Hale",
-    email: "jordan.hale@northstar.com",
-    role: "client",
-    title: "Marketing Lead",
-    company: "Northstar Ventures",
-    permissions: sessionPermissions.client,
-  },
-  editor: {
-    id: "viewer-editor",
-    name: "Amara Lewis",
-    email: "amara@muse.agency",
-    role: "editor",
-    title: "Content Producer",
-    company: "Muse",
-    permissions: sessionPermissions.editor,
-  },
-  admin: {
-    id: "viewer-admin",
-    name: "Robert Loterh",
-    email: "rloterh@muse.agency",
-    role: "admin",
-    title: "Operations Director",
-    company: "Muse",
-    permissions: sessionPermissions.admin,
-  },
-};
 
 export function moderationSummary(tasks: ModerationTask[]) {
   return {

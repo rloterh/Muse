@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ChevronDown, LogOut, ShieldCheck, Sparkles } from "lucide-react";
 import { moderationSummary, siteSettings } from "@/lib/site/config";
 import { canAccessRole, useViewerStore } from "@/stores/viewer-store";
@@ -9,12 +10,50 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { cn } from "@/lib/utils/cn";
 
 export function AuthMenu({ className }: { className?: string }) {
+  const router = useRouter();
   const viewer = useViewerStore((state) => state.viewer);
+  const setViewer = useViewerStore((state) => state.setViewer);
+  const hasHydrated = useViewerStore((state) => state.hasHydrated);
   const accountMenuOpen = useViewerStore((state) => state.accountMenuOpen);
   const setAccountMenuOpen = useViewerStore((state) => state.setAccountMenuOpen);
-  const signOut = useViewerStore((state) => state.signOut);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [signingOut, setSigningOut] = useState(false);
 
   const summary = useMemo(() => moderationSummary(siteSettings.moderationQueue), []);
+
+  useEffect(() => {
+    if (!accountMenuOpen) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      if (!menuRef.current?.contains(event.target as Node)) {
+        setAccountMenuOpen(false);
+      }
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setAccountMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [accountMenuOpen, setAccountMenuOpen]);
+
+  if (!hasHydrated) {
+    return (
+      <div className={cn("flex items-center gap-3", className)}>
+        <div className="inline-flex min-h-10 min-w-[132px] items-center justify-center border border-[var(--color-border)] bg-[var(--color-bg)]/80 px-4 py-2 text-[10px] uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+          Loading session
+        </div>
+      </div>
+    );
+  }
 
   if (!viewer) {
     return (
@@ -24,14 +63,28 @@ export function AuthMenu({ className }: { className?: string }) {
           className="inline-flex items-center gap-2 border border-[var(--color-border)] bg-[var(--color-bg)]/80 px-4 py-2 text-[10px] font-medium uppercase tracking-[0.24em] text-[var(--color-text)] transition-colors hover:border-[var(--color-accent)]/30 hover:text-[var(--color-accent)]"
         >
           <Sparkles className="h-3.5 w-3.5" />
-          Preview access
+          Sign in
         </Link>
       </div>
     );
   }
 
+  async function handleSignOut() {
+    setSigningOut(true);
+
+    try {
+      await fetch("/api/auth/sign-out", { method: "POST" });
+      setViewer(null);
+      setAccountMenuOpen(false);
+      router.push("/auth");
+      router.refresh();
+    } finally {
+      setSigningOut(false);
+    }
+  }
+
   return (
-    <div className={cn("relative", className)}>
+    <div ref={menuRef} className={cn("relative", className)}>
       <button
         type="button"
         onClick={() => setAccountMenuOpen(!accountMenuOpen)}
@@ -63,7 +116,7 @@ export function AuthMenu({ className }: { className?: string }) {
               <p className="font-display text-xl font-bold tracking-tight">{viewer.name}</p>
               <p className="mt-1 text-sm text-[var(--color-text-muted)]">
                 {viewer.title}
-                {viewer.company ? ` · ${viewer.company}` : ""}
+                {viewer.company ? ` | ${viewer.company}` : ""}
               </p>
               <p className="mt-2 text-xs text-[var(--color-text-dim)]">{viewer.email}</p>
             </div>
@@ -78,8 +131,8 @@ export function AuthMenu({ className }: { className?: string }) {
               className="flex items-center justify-between border border-[var(--color-border)] px-4 py-3 text-sm text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-accent)]/30 hover:text-[var(--color-text)]"
               onClick={() => setAccountMenuOpen(false)}
             >
-              Switch preview role
-              <StatusBadge variant="accent">Preview</StatusBadge>
+              Account access
+              <StatusBadge variant="accent">Secure</StatusBadge>
             </Link>
 
             {canAccessRole(viewer, "editor") && (
@@ -101,15 +154,16 @@ export function AuthMenu({ className }: { className?: string }) {
 
           <div className="mt-5 flex items-center justify-between border-t border-[var(--color-border)] pt-4">
             <p className="text-xs text-[var(--color-text-dim)]">
-              {siteSettings.brandName} operational shell
+              {siteSettings.brandName} secure session
             </p>
             <button
               type="button"
-              onClick={signOut}
-              className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-accent)]"
+              onClick={handleSignOut}
+              disabled={signingOut}
+              className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-accent)] disabled:opacity-60"
             >
               <LogOut className="h-3.5 w-3.5" />
-              Log out
+              {signingOut ? "Signing out" : "Log out"}
             </button>
           </div>
         </div>

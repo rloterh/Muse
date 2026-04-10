@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
@@ -18,6 +19,30 @@ export function Navigation() {
   const overlayLinks = canAccessRole(viewer, "editor")
     ? [...siteSettings.navLinks, { label: "Admin", href: "/admin", num: "05" }]
     : siteSettings.navLinks;
+
+  useEffect(() => {
+    closeOverlays();
+  }, [pathname, closeOverlays]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        closeOverlays();
+      }
+    }
+
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [isOpen, closeOverlays]);
 
   return (
     <>
@@ -47,9 +72,12 @@ export function Navigation() {
           <AuthMenu className="hidden md:block" />
 
           <button
+            type="button"
             onClick={() => setMenuOpen(!isOpen)}
             className="relative flex items-center gap-3"
             aria-label="Toggle menu"
+            aria-expanded={isOpen}
+            aria-controls="site-menu-overlay"
           >
             <span className="text-xs font-medium uppercase tracking-[0.3em] text-white">
               {isOpen ? "Close" : "Menu"}
@@ -79,6 +107,7 @@ export function Navigation() {
       <AnimatePresence>
         {isOpen && (
           <motion.div
+            id="site-menu-overlay"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -169,14 +198,14 @@ export function Navigation() {
                     {viewer ? (
                       <>
                         <p className="font-body text-sm text-[var(--color-text-muted)]">
-                          {viewer.name} · {viewer.role}
+                          {viewer.name} | {viewer.role}
                         </p>
                         <Link
                           href="/auth"
                           onClick={closeOverlays}
                           className="block text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-accent)]"
                         >
-                          Switch preview access
+                          Manage account access
                         </Link>
                       </>
                     ) : (
@@ -185,7 +214,7 @@ export function Navigation() {
                         onClick={closeOverlays}
                         className="block text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-accent)]"
                       >
-                        Open preview access
+                        Open secure sign in
                       </Link>
                     )}
                   </div>

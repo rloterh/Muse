@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "seed:auth": "node --env-file=.env.local scripts/seed-supabase-users.mjs"
   },
   "dependencies": {
     "@portabletext/react": "^3.1.0",
@@ -17,6 +18,8 @@
     "@sanity/client": "^6.24.0",
     "@sanity/image-url": "^1.1.0",
     "@studio-freight/lenis": "^1.0.42",
+    "@supabase/ssr": "^0.10.2",
+    "@supabase/supabase-js": "^2.103.0",
     "clsx": "^2.1.1",
     "framer-motion": "^12.0.0",
     "gsap": "^3.12.0",
@@ -37,6 +40,7 @@
     "@types/three": "^0.170.0",
     "eslint": "^9.0.0",
     "eslint-config-next": "^15.1.0",
+    "playwright": "^1.59.1",
     "postcss": "^8.5.0",
     "prettier": "^3.4.0",
     "tailwindcss": "^4.0.0",

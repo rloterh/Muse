@@ -23,9 +23,10 @@ export function ModerationPanel({
   description = "Operational visibility for editors and admins reviewing content, service updates, and active inquiries.",
   tasks,
 }: ModerationPanelProps) {
+  const hasHydrated = useViewerStore((state) => state.hasHydrated);
   const viewer = useViewerStore((state) => state.viewer);
 
-  if (!canAccessRole(viewer, "editor")) {
+  if (!hasHydrated || !canAccessRole(viewer, "editor")) {
     return null;
   }
 
@@ -35,7 +36,7 @@ export function ModerationPanel({
         <div className="flex flex-col gap-4 border-b border-[var(--color-border)] pb-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.3em] text-[var(--color-accent)]">
-              {viewer?.role === "admin" ? "Admin preview" : "Editor preview"}
+              {viewer?.role === "admin" ? "Admin access" : "Editor access"}
             </p>
             <h2 className="mt-3 font-display text-3xl font-bold tracking-tight">{title}</h2>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[var(--color-text-muted)]">

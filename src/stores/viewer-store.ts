@@ -1,48 +1,42 @@
 "use client";
 
 import { create } from "zustand";
-import { createJSONStorage, persist } from "zustand/middleware";
-import { demoSessions } from "@/lib/site/config";
+import { canAccessViewerRole } from "@/lib/auth/roles";
 import type { ViewerRole, ViewerSession } from "@/types";
 
 interface ViewerState {
   viewer: ViewerSession | null;
+  hasHydrated: boolean;
   menuOpen: boolean;
   accountMenuOpen: boolean;
+  setViewer: (viewer: ViewerSession | null) => void;
+  setHasHydrated: (hydrated: boolean) => void;
   setMenuOpen: (open: boolean) => void;
   setAccountMenuOpen: (open: boolean) => void;
-  signInAs: (role: Exclude<ViewerRole, "guest">) => void;
-  signOut: () => void;
   closeOverlays: () => void;
 }
 
-export const useViewerStore = create<ViewerState>()(
-  persist(
-    (set) => ({
-      viewer: null,
-      menuOpen: false,
+export const useViewerStore = create<ViewerState>()((set) => ({
+  viewer: null,
+  hasHydrated: false,
+  menuOpen: false,
+  accountMenuOpen: false,
+  setViewer: (viewer) =>
+    set({
+      viewer,
+      hasHydrated: true,
       accountMenuOpen: false,
-      setMenuOpen: (menuOpen) => set({ menuOpen }),
-      setAccountMenuOpen: (accountMenuOpen) => set({ accountMenuOpen }),
-      signInAs: (role) =>
-        set({ viewer: demoSessions[role], accountMenuOpen: false, menuOpen: false }),
-      signOut: () => set({ viewer: null, accountMenuOpen: false, menuOpen: false }),
-      closeOverlays: () => set({ menuOpen: false, accountMenuOpen: false }),
+      menuOpen: false,
     }),
-    {
-      name: "muse-viewer-session",
-      storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ viewer: state.viewer }),
-    }
-  )
-);
+  setHasHydrated: (hasHydrated) => set({ hasHydrated }),
+  setMenuOpen: (menuOpen) => set({ menuOpen, accountMenuOpen: false }),
+  setAccountMenuOpen: (accountMenuOpen) => set({ accountMenuOpen, menuOpen: false }),
+  closeOverlays: () => set({ menuOpen: false, accountMenuOpen: false }),
+}));
 
 export function canAccessRole(
   viewer: ViewerSession | null,
   minimumRole: Exclude<ViewerRole, "guest">
 ) {
-  if (!viewer) return false;
-
-  const hierarchy: ViewerRole[] = ["guest", "client", "editor", "admin"];
-  return hierarchy.indexOf(viewer.role) >= hierarchy.indexOf(minimumRole);
+  return canAccessViewerRole(viewer?.role, minimumRole);
 }
