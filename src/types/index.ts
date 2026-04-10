@@ -1,6 +1,6 @@
 import type { TypedObject } from "@portabletext/types";
 
-export type PortableTextBlock = TypedObject;
+export type PortableTextBlock = TypedObject & Record<string, unknown>;
 export type SanityAssetReference = { asset: unknown; alt?: string; caption?: string };
 export type SanityImageSource = SanityAssetReference | null;
 export interface ProofMetric {
@@ -97,6 +97,20 @@ export interface Homepage {
   featuredWork: CaseStudy[];
   clientLogos?: SanityAssetReference[];
   testimonials?: Testimonial[];
+}
+
+export interface JournalPost {
+  _id: string;
+  title: string;
+  slug: { current: string };
+  excerpt: string;
+  publishedAt: string;
+  readTime: string;
+  category: string;
+  featured?: boolean;
+  coverImage?: SanityImageSource;
+  body: PortableTextBlock[];
+  relatedCaseStudies?: string[];
 }
 
 export type ViewerRole = "guest" | "client" | "editor" | "admin";

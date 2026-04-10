@@ -10,7 +10,11 @@ import { Reveal } from "@/components/ui/reveal";
 import { SanityGallery, SanityImage } from "@/components/ui/sanity-image";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { fallbackCaseStudies } from "@/lib/content/fallback-data";
-import { resolveCaseStudies, resolveCaseStudyBySlug } from "@/lib/content/resolvers";
+import {
+  resolveCaseStudies,
+  resolveCaseStudyBySlug,
+  resolveJournalPosts,
+} from "@/lib/content/resolvers";
 import { siteSettings } from "@/lib/site/config";
 import { caseStudyMeta } from "@/lib/seo/metadata";
 import type { ProjectFact } from "@/types";
@@ -91,9 +95,10 @@ export async function generateMetadata({ params }: CaseStudyPageProps): Promise<
 
 export default async function CaseStudyPage({ params }: CaseStudyPageProps) {
   const { slug } = await params;
-  const [project, allProjects] = await Promise.all([
+  const [project, allProjects, journalPosts] = await Promise.all([
     resolveCaseStudyBySlug(slug),
     resolveCaseStudies(),
+    resolveJournalPosts(),
   ]);
 
   if (!project) {
@@ -120,6 +125,26 @@ export default async function CaseStudyPage({ params }: CaseStudyPageProps) {
     },
   ];
 
+  const currentIndex = allProjects.findIndex((item) => item.slug.current === slug);
+  const fallbackNextProject =
+    currentIndex >= 0
+      ? allProjects[(currentIndex + 1) % allProjects.length]
+      : fallbackCaseStudies[0];
+  const nextProject = project.nextProject ?? fallbackNextProject;
+  const relatedProjects = allProjects
+    .filter((item) => item.slug.current !== slug)
+    .filter(
+      (item) =>
+        item.sector === project.sector ||
+        item.engagement === project.engagement ||
+        item.services?.some((service) =>
+          projectServices.some((projectService) => projectService.title === service.title)
+        )
+    )
+    .slice(0, 2);
+  const editorialRecommendations = journalPosts
+    .filter((post) => post.relatedCaseStudies?.includes(slug))
+    .slice(0, 2);
   const sectionLinks: SectionLink[] = [
     { id: "overview", label: "Overview" },
     ...contentSections.map((section) => ({ id: section.id, label: section.label })),
@@ -129,14 +154,8 @@ export default async function CaseStudyPage({ params }: CaseStudyPageProps) {
     { id: "results", label: "Results" },
     ...(project.testimonial ? [{ id: "testimonial", label: "Testimonial" }] : []),
     ...(projectServices.length ? [{ id: "services", label: "Service stack" }] : []),
+    ...(editorialRecommendations.length ? [{ id: "journal", label: "Studio notes" }] : []),
   ];
-
-  const currentIndex = allProjects.findIndex((item) => item.slug.current === slug);
-  const fallbackNextProject =
-    currentIndex >= 0
-      ? allProjects[(currentIndex + 1) % allProjects.length]
-      : fallbackCaseStudies[0];
-  const nextProject = project.nextProject ?? fallbackNextProject;
 
   return (
     <>
@@ -447,9 +466,71 @@ export default async function CaseStudyPage({ params }: CaseStudyPageProps) {
                 </Reveal>
               </section>
             )}
+
+            {editorialRecommendations.length > 0 && (
+              <section id="journal" className="scroll-mt-32">
+                <Reveal>
+                  <div className="border-t border-[var(--color-border)] pt-6">
+                    <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                      Studio notes
+                    </p>
+                    <div className="mt-8 grid gap-6 md:grid-cols-2">
+                      {editorialRecommendations.map((post) => (
+                        <Link
+                          key={post._id}
+                          href={`/journal/${post.slug.current}`}
+                          className="group border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6 transition-colors hover:border-[var(--color-accent)]/30"
+                        >
+                          <StatusBadge variant="accent">{post.category}</StatusBadge>
+                          <h2 className="mt-4 font-display text-3xl font-bold tracking-tight transition-colors group-hover:text-[var(--color-accent)]">
+                            {post.title}
+                          </h2>
+                          <p className="mt-3 text-sm leading-relaxed text-[var(--color-text-muted)]">
+                            {post.excerpt}
+                          </p>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                </Reveal>
+              </section>
+            )}
           </div>
         </div>
       </section>
+
+      {relatedProjects.length > 0 && (
+        <section className="border-t border-[var(--color-border)] px-8 py-20 lg:px-12">
+          <div className="mx-auto max-w-7xl">
+            <Reveal>
+              <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                Related work
+              </p>
+              <div className="mt-8 grid gap-6 md:grid-cols-2">
+                {relatedProjects.map((relatedProject) => (
+                  <Link
+                    key={relatedProject._id}
+                    href={`/work/${relatedProject.slug.current}`}
+                    className="group border border-[var(--color-border)] p-6 transition-colors hover:border-[var(--color-accent)]/30"
+                  >
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--color-text-dim)]">
+                      <span>{relatedProject.client}</span>
+                      <span>&middot;</span>
+                      <span>{relatedProject.year}</span>
+                    </div>
+                    <h2 className="mt-4 font-display text-3xl font-bold tracking-tight transition-colors group-hover:text-[var(--color-accent)]">
+                      {relatedProject.title}
+                    </h2>
+                    <p className="mt-3 text-sm leading-relaxed text-[var(--color-text-muted)]">
+                      {relatedProject.excerpt}
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            </Reveal>
+          </div>
+        </section>
+      )}
 
       {nextProject && (
         <section className="border-t border-[var(--color-border)] px-8 py-20 lg:px-12">

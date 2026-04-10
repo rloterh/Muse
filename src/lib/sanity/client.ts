@@ -73,6 +73,16 @@ export const SERVICES_QUERY = `*[_type == "service"] | order(order asc) {
   faqs[]{ question, answer }
 }`;
 
+export const JOURNAL_POSTS_QUERY = `*[_type == "journalPost"] | order(publishedAt desc) {
+  _id, title, slug, excerpt, publishedAt, readTime, category, featured,
+  coverImage, body, relatedCaseStudies
+}`;
+
+export const JOURNAL_POST_QUERY = `*[_type == "journalPost" && slug.current == $slug][0]{
+  _id, title, slug, excerpt, publishedAt, readTime, category, featured,
+  coverImage, body, relatedCaseStudies
+}`;
+
 export const HOMEPAGE_QUERY = `*[_type == "homepage"][0]{
   heroHeadline, heroSubline,
   featuredWork[]->{ _id, title, slug, client, coverImage, color, year, sector, engagement, featured, status },

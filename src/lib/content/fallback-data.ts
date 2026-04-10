@@ -1,4 +1,4 @@
-import type { CaseStudy, Homepage, Service, TeamMember } from "@/types";
+import type { CaseStudy, Homepage, JournalPost, Service, TeamMember } from "@/types";
 
 export const fallbackCaseStudies: CaseStudy[] = [
   {
@@ -424,3 +424,124 @@ export const fallbackHomepage: Homepage = {
     },
   ],
 };
+
+export const fallbackJournalPosts: JournalPost[] = [
+  {
+    _id: "journal-proof-driven-launches",
+    title: "Designing launch stories that convert skeptical buyers",
+    slug: { current: "designing-launch-stories-that-convert-skeptical-buyers" },
+    excerpt:
+      "How we structure proof, pacing, and narrative hierarchy so premium marketing pages feel credible instead of overdesigned.",
+    publishedAt: "2026-03-18",
+    readTime: "6 min read",
+    category: "Strategy",
+    featured: true,
+    relatedCaseStudies: ["luminary", "vanta"],
+    body: [
+      {
+        _type: "block",
+        style: "normal",
+        children: [
+          {
+            _type: "span",
+            text: "The highest-performing launch pages rarely try to say everything at once. They clarify stakes, establish proof, and then reveal depth in an intentional sequence.",
+            marks: [],
+          },
+        ],
+      },
+      {
+        _type: "pullQuote",
+        quote: "Trust is built through structure before it is amplified through visuals.",
+        attribution: "Muse strategy team",
+      } as never,
+      {
+        _type: "metricGrid",
+        items: [
+          {
+            label: "Primary narrative",
+            value: "1",
+            context: "One clear story anchors the page before supporting proof expands it.",
+          },
+          {
+            label: "Proof moments",
+            value: "3-5",
+            context: "Most launches benefit from a concise set of strong evidence blocks.",
+          },
+        ],
+      } as never,
+    ],
+  },
+  {
+    _id: "journal-motion-governance",
+    title: "A practical framework for motion systems in premium products",
+    slug: { current: "a-practical-framework-for-motion-systems-in-premium-products" },
+    excerpt:
+      "A simple way to decide where motion earns its place and where it quietly gets out of the way.",
+    publishedAt: "2026-02-26",
+    readTime: "5 min read",
+    category: "Design Systems",
+    featured: true,
+    relatedCaseStudies: ["echo", "prism"],
+    body: [
+      {
+        _type: "block",
+        style: "normal",
+        children: [
+          {
+            _type: "span",
+            text: "Motion should help users predict what happens next. If animation does not improve comprehension, pacing, or emotional tone, it is probably noise.",
+            marks: [],
+          },
+        ],
+      },
+      {
+        _type: "processTimeline",
+        items: [
+          {
+            label: "01",
+            title: "Map the moments that matter",
+            summary: "Focus first on transitions, confirmations, and state changes that benefit from added clarity.",
+          },
+          {
+            label: "02",
+            title: "Set amplitude limits",
+            summary: "Constrain duration, distance, and easing so the system feels coherent rather than improvised.",
+          },
+          {
+            label: "03",
+            title: "Respect reduced motion",
+            summary: "Every major animation family should have a quieter equivalent that preserves information hierarchy.",
+          },
+        ],
+      } as never,
+    ],
+  },
+  {
+    _id: "journal-case-study-ops",
+    title: "What content teams actually need from a case-study CMS",
+    slug: { current: "what-content-teams-actually-need-from-a-case-study-cms" },
+    excerpt:
+      "The operational fields and publishing states that turn a beautiful portfolio into a maintainable content system.",
+    publishedAt: "2026-01-30",
+    readTime: "7 min read",
+    category: "Operations",
+    relatedCaseStudies: ["prism", "meridian"],
+    body: [
+      {
+        _type: "block",
+        style: "normal",
+        children: [
+          {
+            _type: "span",
+            text: "A high-quality case-study CMS has to support more than title, excerpt, and images. Teams need proof fields, publishing workflow, reuse patterns, and a way to preserve narrative quality under deadline pressure.",
+            marks: [],
+          },
+        ],
+      },
+      {
+        _type: "callout",
+        text: "The most common failure mode is forcing editors to improvise strategic proof inside generic rich-text blocks.",
+      } as never,
+    ],
+  },
+];

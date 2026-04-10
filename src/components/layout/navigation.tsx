@@ -17,7 +17,14 @@ export function Navigation() {
   const closeOverlays = useViewerStore((state) => state.closeOverlays);
 
   const overlayLinks = canAccessRole(viewer, "editor")
-    ? [...siteSettings.navLinks, { label: "Admin", href: "/admin", num: "05" }]
+    ? [
+        ...siteSettings.navLinks,
+        {
+          label: "Admin",
+          href: "/admin",
+          num: String(siteSettings.navLinks.length + 1).padStart(2, "0"),
+        },
+      ]
     : siteSettings.navLinks;
 
   useEffect(() => {
