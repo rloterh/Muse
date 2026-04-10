@@ -25,7 +25,9 @@ function checkRateLimit(ip: string): boolean {
 
 export async function POST(request: Request) {
   try {
-    const ip = request.headers.get("x-forwarded-for") ?? "unknown";
+    const forwardedFor = request.headers.get("x-forwarded-for");
+    const ip =
+      forwardedFor?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";
 
     if (!checkRateLimit(ip)) {
       return NextResponse.json(

@@ -2,9 +2,15 @@
 
 import { useEffect } from "react";
 
+type LenisInstance = {
+  raf: (time: number) => void;
+  on: (event: "scroll", callback: () => void) => void;
+  destroy: () => void;
+};
+
 export function useSmoothScroll() {
   useEffect(() => {
-    let lenis: any;
+    let lenis: LenisInstance | undefined;
 
     async function init() {
       const Lenis = (await import("@studio-freight/lenis")).default;
@@ -17,29 +23,27 @@ export function useSmoothScroll() {
       });
 
       function raf(time: number) {
-        lenis.raf(time);
+        lenis?.raf(time);
         requestAnimationFrame(raf);
       }
 
       requestAnimationFrame(raf);
 
-      // Sync with GSAP ScrollTrigger if loaded
       try {
         const gsap = (await import("gsap")).default;
         const { ScrollTrigger } = await import("gsap/ScrollTrigger");
         gsap.registerPlugin(ScrollTrigger);
 
-        lenis.on("scroll", ScrollTrigger.update);
-        gsap.ticker.add((time: number) => lenis.raf(time * 1000));
+        lenis?.on("scroll", ScrollTrigger.update);
+        gsap.ticker.add((time: number) => lenis?.raf(time * 1000));
         gsap.ticker.lagSmoothing(0);
       } catch {
-        // GSAP not yet loaded — that's fine
+        // GSAP not yet loaded - that's fine.
       }
     }
 
-    // Only enable on desktop
     if (!window.matchMedia("(pointer: coarse)").matches) {
-      init();
+      void init();
     }
 
     return () => {

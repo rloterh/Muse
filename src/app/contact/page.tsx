@@ -136,6 +136,7 @@ export default function ContactPage() {
                         <input
                           type="text"
                           required
+                          maxLength={80}
                           value={form.name}
                           onChange={(event) => setForm({ ...form, name: event.target.value })}
                           placeholder="Your full name"
@@ -149,6 +150,7 @@ export default function ContactPage() {
                         <input
                           type="email"
                           required
+                          maxLength={160}
                           value={form.email}
                           onChange={(event) => setForm({ ...form, email: event.target.value })}
                           placeholder="you@company.com"
@@ -163,6 +165,7 @@ export default function ContactPage() {
                       </label>
                       <input
                         type="text"
+                        maxLength={120}
                         value={form.company}
                         onChange={(event) => setForm({ ...form, company: event.target.value })}
                         placeholder="Your company name"
@@ -222,6 +225,7 @@ export default function ContactPage() {
                       </label>
                       <textarea
                         rows={4}
+                        maxLength={4000}
                         value={form.message}
                         onChange={(event) => setForm({ ...form, message: event.target.value })}
                         placeholder="Tell us about your project..."

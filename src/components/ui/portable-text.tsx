@@ -2,6 +2,7 @@
 
 import { PortableText as SanityPortableText, type PortableTextComponents } from "@portabletext/react";
 import { SanityImage } from "./sanity-image";
+import type { PortableTextBlock } from "@/types";
 
 const components: PortableTextComponents = {
   block: {
@@ -97,7 +98,7 @@ const components: PortableTextComponents = {
 };
 
 interface PortableTextProps {
-  value: any[];
+  value: PortableTextBlock[];
   className?: string;
 }
 

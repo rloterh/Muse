@@ -32,7 +32,7 @@ Muse should evolve from a visually impressive portfolio into a production-grade 
 
 ## Phase Plan
 
-### Phase 1 — Foundation Platform
+### Phase 1 - Foundation Platform
 
 **Goal**
 Turn Muse into a structured product shell with centralized site config, role-aware navigation, preview auth, admin/moderation scaffolding, and server-first content flow.
@@ -62,7 +62,7 @@ Turn Muse into a structured product shell with centralized site config, role-awa
 - Real auth and RBAC still need Supabase schema and environment setup later.
 - Preview session behavior should not be mistaken for security enforcement.
 
-### Phase 2 — Content Experience
+### Phase 2 - Content Experience
 
 **Goal**
 Deepen the storytelling and publishing model so Muse feels like a premium content platform, not just a set of static pages.
@@ -86,7 +86,7 @@ Deepen the storytelling and publishing model so Muse feels like a premium conten
 - Work pages feel curated, searchable, and strategically rich.
 - Storytelling blocks look premium and load smoothly.
 
-### Phase 3 — Conversion and Operations
+### Phase 3 - Conversion and Operations
 
 **Goal**
 Build the commercial layer around inquiries, client trust, and operational follow-up.
@@ -110,7 +110,7 @@ Build the commercial layer around inquiries, client trust, and operational follo
 - Inquiry intake carries enough context for operations to act on.
 - Admin preview reflects the commercial workflow, not just content review.
 
-### Phase 4 — Admin, Commerce, Infrastructure
+### Phase 4 - Admin, Commerce, Infrastructure
 
 **Goal**
 Move from preview scaffolding to real enterprise operations.
@@ -134,7 +134,7 @@ Move from preview scaffolding to real enterprise operations.
 - Admin and moderation actions have real enforcement and persistence.
 - Deployment and operational posture match enterprise expectations.
 
-### Phase 5 — Polish, Performance, Launch Hardening
+### Phase 5 - Polish, Performance, Launch Hardening
 
 **Goal**
 Push Muse to launch-ready quality across performance, accessibility, and presentation.

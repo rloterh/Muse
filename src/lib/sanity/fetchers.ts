@@ -6,12 +6,8 @@ import {
   TEAM_QUERY,
   fetchSanity,
 } from "./client";
-import type { CaseStudy, Service, TeamMember, Homepage } from "@/types";
+import type { CaseStudy, Homepage, Service, TeamMember } from "@/types";
 
-/**
- * Fetch with ISR revalidation.
- * In production, content revalidates every 60 seconds.
- */
 async function fetchCached<T>(
   query: string,
   params?: Record<string, unknown>,
@@ -21,10 +17,6 @@ async function fetchCached<T>(
     next: { revalidate },
   });
 }
-
-// ============================================
-// PAGE DATA FETCHERS
-// ============================================
 
 export async function getHomepageData(): Promise<Homepage | null> {
   return fetchCached<Homepage | null>(HOMEPAGE_QUERY);
@@ -42,7 +34,7 @@ export async function getCaseStudySlugs(): Promise<string[]> {
   const studies = await fetchCached<{ slug: { current: string } }[]>(
     `*[_type == "caseStudy"]{ slug }`
   );
-  return studies.map((s) => s.slug.current);
+  return studies.map((study) => study.slug.current);
 }
 
 export async function getTeamMembers(): Promise<TeamMember[]> {
@@ -53,13 +45,9 @@ export async function getServices(): Promise<Service[]> {
   return fetchCached<Service[]>(SERVICES_QUERY);
 }
 
-// ============================================
-// METADATA HELPERS
-// ============================================
-
 export function caseStudyMetadata(study: CaseStudy) {
   return {
-    title: `${study.title} — ${study.client}`,
+    title: `${study.title} - ${study.client}`,
     description: study.excerpt ?? `Case study: ${study.title} for ${study.client}`,
     openGraph: {
       title: study.title,

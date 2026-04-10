@@ -192,7 +192,7 @@ export function HomePageClient({ homepage, services }: HomePageClientProps) {
                   </div>
                   <div className="mt-5">
                     <p className="text-xs uppercase tracking-[0.2em] text-[var(--color-text-dim)]">
-                      {project.client} · {project.year}
+                      {project.client} | {project.year}
                     </p>
                     <h3 className="mt-1 font-display text-2xl font-bold tracking-tight transition-colors group-hover:text-[var(--color-accent)]">
                       {project.title}
@@ -329,7 +329,7 @@ export function HomePageClient({ homepage, services }: HomePageClientProps) {
                         {testimonial.author}
                       </p>
                       <p className="mt-1 text-xs uppercase tracking-[0.2em] text-[var(--color-text-dim)]">
-                        {[testimonial.role, testimonial.company].filter(Boolean).join(" · ")}
+                        {[testimonial.role, testimonial.company].filter(Boolean).join(" | ")}
                       </p>
                     </div>
                   </div>

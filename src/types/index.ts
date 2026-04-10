@@ -1,4 +1,6 @@
-export type PortableTextBlock = unknown;
+import type { TypedObject } from "@portabletext/types";
+
+export type PortableTextBlock = TypedObject;
 export type SanityAssetReference = { asset: unknown; alt?: string; caption?: string };
 export type SanityImageSource = SanityAssetReference | null;
 
@@ -73,6 +75,13 @@ export interface ViewerSession {
   title: string;
   company?: string;
   permissions: string[];
+}
+
+export interface UserProfileRecord {
+  full_name: string | null;
+  title: string | null;
+  company: string | null;
+  role: string | null;
 }
 
 export interface ModerationTask {
