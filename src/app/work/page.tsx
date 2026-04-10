@@ -1,21 +1,8 @@
 import { WorkPageClient } from "@/components/pages/work-page-client";
-import { fallbackCaseStudies } from "@/lib/content/fallback-data";
-import { getCaseStudies } from "@/lib/sanity/fetchers";
-import type { CaseStudy } from "@/types";
+import { resolveCaseStudies } from "@/lib/content/resolvers";
 
 export default async function WorkPage() {
-  let projects: CaseStudy[] = fallbackCaseStudies;
-
-  if (process.env.NEXT_PUBLIC_SANITY_PROJECT_ID) {
-    try {
-      const data = await getCaseStudies();
-      if (data.length > 0) {
-        projects = data;
-      }
-    } catch {
-      projects = fallbackCaseStudies;
-    }
-  }
+  const projects = await resolveCaseStudies();
 
   return <WorkPageClient projects={projects} />;
 }

@@ -1,12 +1,23 @@
-import { sanityClient, CASE_STUDIES_QUERY, CASE_STUDY_QUERY, TEAM_QUERY, SERVICES_QUERY, HOMEPAGE_QUERY } from "./client";
+import {
+  CASE_STUDIES_QUERY,
+  CASE_STUDY_QUERY,
+  HOMEPAGE_QUERY,
+  SERVICES_QUERY,
+  TEAM_QUERY,
+  fetchSanity,
+} from "./client";
 import type { CaseStudy, Service, TeamMember, Homepage } from "@/types";
 
 /**
  * Fetch with ISR revalidation.
  * In production, content revalidates every 60 seconds.
  */
-async function fetchCached<T>(query: string, params?: Record<string, unknown>, revalidate = 60): Promise<T> {
-  return sanityClient.fetch<T>(query, params ?? {}, {
+async function fetchCached<T>(
+  query: string,
+  params?: Record<string, unknown>,
+  revalidate = 60
+): Promise<T> {
+  return fetchSanity<T>(query, params ?? {}, {
     next: { revalidate },
   });
 }

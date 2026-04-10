@@ -1,21 +1,8 @@
 import { ServicesPageClient } from "@/components/pages/services-page-client";
-import { fallbackServices } from "@/lib/content/fallback-data";
-import { getServices } from "@/lib/sanity/fetchers";
-import type { Service } from "@/types";
+import { resolveServices } from "@/lib/content/resolvers";
 
 export default async function ServicesPage() {
-  let services: Service[] = fallbackServices;
-
-  if (process.env.NEXT_PUBLIC_SANITY_PROJECT_ID) {
-    try {
-      const data = await getServices();
-      if (data.length > 0) {
-        services = data;
-      }
-    } catch {
-      services = fallbackServices;
-    }
-  }
+  const services = await resolveServices();
 
   return <ServicesPageClient services={services} />;
 }
