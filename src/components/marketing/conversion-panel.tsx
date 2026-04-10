@@ -1,0 +1,67 @@
+"use client";
+
+import Link from "next/link";
+import { ArrowRight, Download, FileText } from "lucide-react";
+
+interface ConversionPanelProps {
+  eyebrow: string;
+  title: string;
+  description: string;
+  primaryHref: string;
+  primaryLabel: string;
+  secondaryHref?: string;
+  secondaryLabel?: string;
+  note?: string;
+}
+
+export function ConversionPanel({
+  eyebrow,
+  title,
+  description,
+  primaryHref,
+  primaryLabel,
+  secondaryHref = "/api/capability-deck",
+  secondaryLabel = "Download capability deck",
+  note,
+}: ConversionPanelProps) {
+  return (
+    <section className="border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-8 py-10 lg:px-10 lg:py-12">
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+        <div>
+          <div className="inline-flex items-center gap-3 text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+            <FileText className="h-4 w-4 text-[var(--color-accent)]" />
+            {eyebrow}
+          </div>
+          <h2 className="mt-4 max-w-3xl font-display text-3xl font-bold tracking-tight lg:text-4xl">
+            {title}
+          </h2>
+          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-[var(--color-text-muted)]">
+            {description}
+          </p>
+          {note && (
+            <p className="mt-4 text-xs uppercase tracking-[0.2em] text-[var(--color-text-dim)]">
+              {note}
+            </p>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Link
+            href={primaryHref}
+            className="group inline-flex items-center justify-center gap-2 border border-[var(--color-text)] px-6 py-4 text-xs font-medium uppercase tracking-[0.22em] transition-all duration-300 hover:bg-[var(--color-text)] hover:text-[var(--color-bg)]"
+          >
+            {primaryLabel}
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+          </Link>
+          <a
+            href={secondaryHref}
+            className="group inline-flex items-center justify-center gap-2 border border-[var(--color-border)] px-6 py-4 text-xs font-medium uppercase tracking-[0.22em] text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-accent)]/30 hover:text-[var(--color-text)]"
+          >
+            {secondaryLabel}
+            <Download className="h-4 w-4 text-[var(--color-accent)] transition-transform group-hover:translate-y-0.5" />
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}

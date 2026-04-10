@@ -42,6 +42,43 @@ export const siteSettings: SiteSettings = {
       note: "Long-term partnerships built on measurable outcomes.",
     },
   ],
+  trustSignals: [
+    {
+      label: "Recognized for",
+      value: "Craft + clarity",
+      description: "Clients rely on Muse when the brief needs both premium presentation and operational rigor.",
+    },
+    {
+      label: "Trusted by",
+      value: "Founders to enterprise teams",
+      description: "Our work spans launch-stage brands, product teams, and established operators modernizing their story.",
+    },
+    {
+      label: "Engagement style",
+      value: "Senior-led, hands-on",
+      description: "The same people shaping the strategy stay close through design, build, and launch.",
+    },
+  ],
+  engagementModels: [
+    {
+      name: "Discovery sprint",
+      summary: "A focused strategic engagement that clarifies priorities, risks, and the most credible direction forward.",
+      bestFor: "Repositioning, launch planning, and high-stakes new initiatives.",
+      timeline: "1-2 weeks",
+    },
+    {
+      name: "Launch program",
+      summary: "Brand, product, and marketing surfaces designed together so the public story and execution feel aligned.",
+      bestFor: "New product launches, rebrands, and flagship digital experiences.",
+      timeline: "6-12 weeks",
+    },
+    {
+      name: "Embedded partnership",
+      summary: "Senior support across design, engineering, and iteration for teams that need continued momentum after launch.",
+      bestFor: "Ongoing product support, design systems, and growth-stage refinement.",
+      timeline: "Monthly or quarterly",
+    },
+  ],
   moderationQueue: [
     {
       id: "queue-luminary",

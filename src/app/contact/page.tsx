@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertCircle, ArrowUpRight, CheckCircle2, Radar, Send } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { Footer } from "@/components/layout/footer";
 import { Navigation } from "@/components/layout/navigation";
 import { Reveal } from "@/components/ui/reveal";
@@ -46,11 +47,41 @@ function chipClass(active: boolean) {
 }
 
 export default function ContactPage() {
+  const searchParams = useSearchParams();
   const [form, setForm] = useState(initialForm);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [inquiryResult, setInquiryResult] = useState<InquiryResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const intent = searchParams.get("intent");
+    const requestedService = searchParams.get("service");
+
+    if (!intent && !requestedService) return;
+
+    setForm((prev) => {
+      const nextServices =
+        requestedService && serviceOptions.includes(requestedService)
+          ? prev.services.includes(requestedService)
+            ? prev.services
+            : [...prev.services, requestedService]
+          : prev.services;
+
+      return {
+        ...prev,
+        projectFocus:
+          intent === "proposal" && !prev.projectFocus ? "Website redesign" : prev.projectFocus,
+        referralSource:
+          intent === "proposal" && !prev.referralSource ? "Other" : prev.referralSource,
+        goals:
+          intent === "proposal" && !prev.goals
+            ? "We would like a proposal-oriented response with likely scope, working model, and recommended next step."
+            : prev.goals,
+        services: nextServices,
+      };
+    });
+  }, [searchParams]);
 
   function toggleService(service: string) {
     setForm((prev) => ({
@@ -119,6 +150,12 @@ export default function ContactPage() {
               This intake is designed to gather enough strategic and operational context for routing,
               discovery planning, and a faster first response.
             </p>
+            {searchParams.get("intent") === "proposal" && (
+              <div className="mt-8 inline-flex items-center gap-3 border border-[var(--color-accent)]/20 bg-[var(--color-accent)]/5 px-4 py-3 text-sm text-[var(--color-text-muted)]">
+                <Radar className="h-4 w-4 text-[var(--color-accent)]" />
+                Proposal mode enabled. We&apos;ll route this as a scope-and-next-step inquiry.
+              </div>
+            )}
           </Reveal>
 
           <div className="mt-20 grid gap-16 lg:grid-cols-[minmax(0,1fr)_360px]">

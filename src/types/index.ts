@@ -174,6 +174,19 @@ export interface SiteMetric {
   note?: string;
 }
 
+export interface TrustSignal {
+  label: string;
+  value: string;
+  description: string;
+}
+
+export interface EngagementModel {
+  name: string;
+  summary: string;
+  bestFor: string;
+  timeline: string;
+}
+
 export interface SiteSettings {
   brandName: string;
   brandTagline: string;
@@ -183,6 +196,8 @@ export interface SiteSettings {
   socials: { label: string; href: string }[];
   navLinks: { label: string; href: string; num: string }[];
   spotlightMetrics: SiteMetric[];
+  trustSignals: TrustSignal[];
+  engagementModels: EngagementModel[];
   moderationQueue: ModerationTask[];
   inquiryPipeline: InquiryPreview[];
 }

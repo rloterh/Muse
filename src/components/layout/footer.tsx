@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowUpRight } from "lucide-react";
+import { ConversionPanel } from "@/components/marketing/conversion-panel";
 import { siteSettings } from "@/lib/site/config";
 
 export function Footer() {
@@ -14,21 +14,16 @@ export function Footer() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
-          className="mx-auto max-w-5xl text-center"
+          className="mx-auto max-w-6xl"
         >
-          <p className="text-xs font-medium uppercase tracking-[0.3em] text-[var(--color-text-dim)]">
-            Ready to create something extraordinary?
-          </p>
-          <h2 className="mt-6 font-display text-5xl font-bold leading-none tracking-tight lg:text-7xl">
-            Let&apos;s work <span className="italic text-[var(--color-accent)]">together</span>
-          </h2>
-          <Link
-            href="/contact"
-            className="group mt-10 inline-flex items-center gap-2 border border-[var(--color-text)] px-8 py-4 text-sm font-medium uppercase tracking-[0.2em] transition-all duration-300 hover:bg-[var(--color-text)] hover:text-[var(--color-bg)]"
-          >
-            Start a project
-            <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-          </Link>
+          <ConversionPanel
+            eyebrow="Ready to move?"
+            title="Request a proposal or review the capability deck"
+            description="Use the inquiry flow when you are ready to scope a live opportunity, or download the deck for internal sharing and stakeholder alignment."
+            primaryHref="/contact?intent=proposal"
+            primaryLabel="Request proposal"
+            note="Senior-led engagements across strategy, design, product, and launch delivery"
+          />
         </motion.div>
       </div>
 

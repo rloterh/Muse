@@ -1,9 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { BarChart3, Code2, Layers, Palette, Smartphone, Video } from "lucide-react";
+import { ConversionPanel } from "@/components/marketing/conversion-panel";
 import { Navigation } from "@/components/layout/navigation";
 import { Footer } from "@/components/layout/footer";
 import { Reveal, StaggerContainer, StaggerItem } from "@/components/ui/reveal";
+import { siteSettings } from "@/lib/site/config";
 import type { LucideIcon } from "lucide-react";
 import type { Service } from "@/types";
 
@@ -105,11 +108,64 @@ export function ServicesPageClient({ services }: ServicesPageClientProps) {
                           </div>
                         )}
                       </div>
-                    </div>
                   </div>
-                </Reveal>
-              );
+
+                  {service.faqs && service.faqs.length > 0 && (
+                    <div className="mt-6 grid gap-4 lg:grid-cols-2">
+                      {service.faqs.map((faq) => (
+                        <div
+                          key={`${service._id}-${faq.question}`}
+                          className="border border-[var(--color-border)] bg-[var(--color-bg)] p-4"
+                        >
+                          <p className="text-sm font-medium text-[var(--color-text)]">
+                            {faq.question}
+                          </p>
+                          <p className="mt-3 text-sm leading-relaxed text-[var(--color-text-muted)]">
+                            {faq.answer}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </Reveal>
+            );
             })}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-[var(--color-border)] px-8 py-24 lg:px-12">
+        <div className="mx-auto max-w-7xl">
+          <Reveal>
+            <p className="text-xs font-medium uppercase tracking-[0.3em] text-[var(--color-text-dim)]">
+              Engagement models
+            </p>
+            <h2 className="mt-3 font-display text-4xl font-bold tracking-tight lg:text-5xl">
+              Flexible ways to work together
+            </h2>
+          </Reveal>
+
+          <div className="mt-12 grid gap-6 lg:grid-cols-3">
+            {siteSettings.engagementModels.map((model, index) => (
+              <Reveal key={model.name} delay={index * 0.08}>
+                <div className="border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6">
+                  <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                    {model.timeline}
+                  </p>
+                  <h3 className="mt-4 font-display text-3xl font-bold tracking-tight">
+                    {model.name}
+                  </h3>
+                  <p className="mt-4 text-sm leading-relaxed text-[var(--color-text-muted)]">
+                    {model.summary}
+                  </p>
+                  <p className="mt-4 text-xs uppercase tracking-[0.2em] text-[var(--color-text-dim)]">
+                    Best for
+                  </p>
+                  <p className="mt-2 text-sm text-[var(--color-text)]">{model.bestFor}</p>
+                </div>
+              </Reveal>
+            ))}
           </div>
         </div>
       </section>
@@ -162,6 +218,34 @@ export function ServicesPageClient({ services }: ServicesPageClientProps) {
               </StaggerItem>
             ))}
           </StaggerContainer>
+        </div>
+      </section>
+
+      <section className="px-8 py-24 lg:px-12">
+        <div className="mx-auto max-w-6xl">
+          <Reveal>
+            <ConversionPanel
+              eyebrow="Need something concrete?"
+              title="Download the capability deck or request a tailored proposal"
+              description="Choose the deck for internal review, or open a proposal-oriented inquiry with the right service focus already attached."
+              primaryHref="/contact?intent=proposal"
+              primaryLabel="Request proposal"
+              secondaryHref="/api/capability-deck"
+              secondaryLabel="Download deck"
+            />
+          </Reveal>
+
+          <Reveal delay={0.1}>
+            <div className="mt-6 flex justify-end">
+              <Link
+                href="/contact?intent=proposal&service=Product%20Design"
+                className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-accent)]"
+              >
+                Prefer a product-focused proposal?
+                <span className="text-[var(--color-accent)]">Start here</span>
+              </Link>
+            </div>
+          </Reveal>
         </div>
       </section>
 
