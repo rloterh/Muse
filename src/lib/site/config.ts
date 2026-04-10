@@ -1,4 +1,4 @@
-import type { ModerationTask, SiteSettings } from "@/types";
+import type { InquiryPreview, ModerationTask, SiteSettings } from "@/types";
 
 export const siteSettings: SiteSettings = {
   brandName: "Muse",
@@ -71,9 +71,93 @@ export const siteSettings: SiteSettings = {
       status: "Scheduled",
     },
   ],
+  inquiryPipeline: [
+    {
+      id: "inquiry-aerflow",
+      company: "Aerflow Robotics",
+      contact: "Nina Patel",
+      budget: "$50k - $100k",
+      timeline: "6-8 weeks",
+      services: ["Web Development", "Product Design"],
+      source: "Referral",
+      region: "London, United Kingdom",
+      status: "Discovery scheduled",
+      routing: {
+        team: "Product + engineering",
+        owner: "James Okafor",
+        fit: "Build-ready",
+        nextStep: "Confirm solution scope and implementation constraints before the discovery call.",
+        priority: "high",
+      },
+      notes:
+        "Strong technical fit and an accelerated buying timeline. Needs a sharper content and systems recommendation before scoping.",
+    },
+    {
+      id: "inquiry-verdant",
+      company: "Verdant Capital",
+      contact: "Amelia Scott",
+      budget: "$25k - $50k",
+      timeline: "This quarter",
+      services: ["Brand Strategy", "Visual Identity"],
+      source: "Organic search",
+      region: "New York, United States",
+      status: "Qualified",
+      routing: {
+        team: "Brand strategy",
+        owner: "Sofia Laurent",
+        fit: "Strategic",
+        nextStep: "Prepare a positioning workshop outline and competitor audit preview.",
+        priority: "medium",
+      },
+      notes:
+        "Clear appetite for positioning and identity work. Likely a strong workshop-led engagement with follow-on rollout.",
+    },
+    {
+      id: "inquiry-northern",
+      company: "Northern Grid",
+      contact: "Daniel Brooks",
+      budget: "$10k - $25k",
+      timeline: "Exploring options",
+      services: ["Motion & 3D"],
+      source: "Conference",
+      region: "Toronto, Canada",
+      status: "Proposal drafted",
+      routing: {
+        team: "Motion systems",
+        owner: "Kai Tanaka",
+        fit: "Nurture",
+        nextStep: "Position the engagement as a phased concept sprint before committing to full production scope.",
+        priority: "low",
+      },
+      notes:
+        "Strong interest in a wow-factor experience, but the budget/timeline pairing suggests a phased recommendation rather than a full production engagement.",
+    },
+  ],
 };
 
 export const budgetRanges = ["Under $10k", "$10k - $25k", "$25k - $50k", "$50k - $100k", "$100k+"];
+export const timelineOptions = [
+  "ASAP",
+  "2-4 weeks",
+  "4-8 weeks",
+  "This quarter",
+  "Exploring options",
+];
+export const projectFocusOptions = [
+  "New launch",
+  "Rebrand or repositioning",
+  "Website redesign",
+  "Product experience",
+  "Ongoing design support",
+];
+export const referralSourceOptions = [
+  "Referral",
+  "Organic search",
+  "Social / editorial",
+  "Conference",
+  "Returning client",
+  "Other",
+];
 
 export const serviceOptions = [
   "Brand Strategy",
@@ -89,5 +173,13 @@ export function moderationSummary(tasks: ModerationTask[]) {
     total: tasks.length,
     urgent: tasks.filter((task) => task.priority === "high").length,
     scheduled: tasks.filter((task) => task.status === "Scheduled").length,
+  };
+}
+
+export function inquirySummary(inquiries: InquiryPreview[]) {
+  return {
+    total: inquiries.length,
+    urgent: inquiries.filter((inquiry) => inquiry.routing.priority === "high").length,
+    scheduled: inquiries.filter((inquiry) => inquiry.status === "Discovery scheduled").length,
   };
 }

@@ -142,6 +142,31 @@ export interface ModerationTask {
   status: "Needs review" | "Scheduled" | "Published" | "In progress";
 }
 
+export type InquiryPriority = "low" | "medium" | "high";
+export type InquiryStatus = "New" | "Qualified" | "Discovery scheduled" | "Proposal drafted";
+
+export interface InquiryRouting {
+  team: string;
+  owner: string;
+  fit: "Strategic" | "Build-ready" | "Nurture";
+  nextStep: string;
+  priority: InquiryPriority;
+}
+
+export interface InquiryPreview {
+  id: string;
+  company: string;
+  contact: string;
+  budget: string;
+  timeline: string;
+  services: string[];
+  source: string;
+  region: string;
+  status: InquiryStatus;
+  routing: InquiryRouting;
+  notes: string;
+}
+
 export interface SiteMetric {
   label: string;
   value: number;
@@ -159,4 +184,5 @@ export interface SiteSettings {
   navLinks: { label: string; href: string; num: string }[];
   spotlightMetrics: SiteMetric[];
   moderationQueue: ModerationTask[];
+  inquiryPipeline: InquiryPreview[];
 }

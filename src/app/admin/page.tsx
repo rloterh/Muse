@@ -1,13 +1,15 @@
 import { ShieldAlert } from "lucide-react";
+import { InquiryPipeline } from "@/components/admin/inquiry-pipeline";
 import { InviteUserCard } from "@/components/admin/invite-user-card";
 import { Footer } from "@/components/layout/footer";
 import { Navigation } from "@/components/layout/navigation";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Reveal } from "@/components/ui/reveal";
 import { requireViewerRole } from "@/lib/auth/viewer";
-import { moderationSummary, siteSettings } from "@/lib/site/config";
+import { inquirySummary, moderationSummary, siteSettings } from "@/lib/site/config";
 
 const summary = moderationSummary(siteSettings.moderationQueue);
+const inquiryStats = inquirySummary(siteSettings.inquiryPipeline);
 
 export default async function AdminPage() {
   const viewer = await requireViewerRole("editor", "/admin");
@@ -64,6 +66,33 @@ export default async function AdminPage() {
             </div>
           </div>
 
+          <div className="mt-4 grid gap-4 lg:grid-cols-3">
+            <div className="border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6">
+              <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                Active inquiries
+              </p>
+              <p className="mt-4 font-display text-5xl font-bold tracking-tight">
+                {inquiryStats.total}
+              </p>
+            </div>
+            <div className="border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6">
+              <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                Urgent leads
+              </p>
+              <p className="mt-4 font-display text-5xl font-bold tracking-tight text-[var(--color-accent)]">
+                {inquiryStats.urgent}
+              </p>
+            </div>
+            <div className="border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6">
+              <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                Discovery scheduled
+              </p>
+              <p className="mt-4 font-display text-5xl font-bold tracking-tight">
+                {inquiryStats.scheduled}
+              </p>
+            </div>
+          </div>
+
           <div className="mt-12 grid gap-4 lg:grid-cols-3">
             {siteSettings.moderationQueue.map((task) => (
               <div
@@ -101,6 +130,8 @@ export default async function AdminPage() {
               </div>
             ))}
           </div>
+
+          <InquiryPipeline inquiries={siteSettings.inquiryPipeline} />
 
           {viewer.role === "admin" && (
             <div className="mt-12">
