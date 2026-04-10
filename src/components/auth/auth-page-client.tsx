@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertCircle, ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
+import { AlertCircle, ArrowRight, KeyRound, ShieldCheck, Sparkles } from "lucide-react";
 import { Footer } from "@/components/layout/footer";
 import { Navigation } from "@/components/layout/navigation";
 import { viewerRoleDetails } from "@/lib/auth/roles";
@@ -22,6 +22,10 @@ const reasonCopy: Record<string, string> = {
     "Your account is signed in, but it does not have permission to open the moderation center.",
   "not-configured":
     "Supabase auth is not configured in this environment yet. Add the public Supabase env vars to enable sign-in.",
+  "password-updated":
+    "Your password has been updated. Sign in with the new credentials to continue.",
+  "auth-confirm-failed":
+    "The invite or recovery link could not be validated. Request a fresh one and try again.",
 };
 
 interface AuthPageClientProps {
@@ -36,8 +40,11 @@ export function AuthPageClient({ redirectTo, reason }: AuthPageClientProps) {
   const setViewer = useViewerStore((state) => state.setViewer);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [resetEmail, setResetEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [error, setError] = useState<string | null>(reason ? reasonCopy[reason] ?? null : null);
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -92,6 +99,43 @@ export function AuthPageClient({ redirectTo, reason }: AuthPageClientProps) {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  async function handlePasswordReset(event: React.FormEvent) {
+    event.preventDefault();
+    setError(null);
+    setResetMessage(null);
+
+    const targetEmail = resetEmail.trim() || email.trim();
+
+    if (!targetEmail) {
+      setError("Enter your email address to receive a password reset link.");
+      return;
+    }
+
+    setResetting(true);
+
+    try {
+      const response = await fetch("/api/auth/password-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: targetEmail }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error ?? "Unable to send a reset link.");
+        setResetting(false);
+        return;
+      }
+
+      setResetMessage("Recovery email sent. Check your inbox for the secure password link.");
+      setResetEmail("");
+    } catch {
+      setError("Network error. Please try again.");
+    }
+
+    setResetting(false);
   }
 
   return (
@@ -179,10 +223,14 @@ export function AuthPageClient({ redirectTo, reason }: AuthPageClientProps) {
 
                 <form onSubmit={handleSubmit} className="mt-10 space-y-8">
                   <div>
-                    <label className="block text-xs font-medium uppercase tracking-[0.2em] text-[var(--color-text-dim)]">
+                    <label
+                      htmlFor="auth-email"
+                      className="block text-xs font-medium uppercase tracking-[0.2em] text-[var(--color-text-dim)]"
+                    >
                       Email
                     </label>
                     <input
+                      id="auth-email"
                       type="email"
                       autoComplete="email"
                       value={email}
@@ -193,10 +241,14 @@ export function AuthPageClient({ redirectTo, reason }: AuthPageClientProps) {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium uppercase tracking-[0.2em] text-[var(--color-text-dim)]">
+                    <label
+                      htmlFor="auth-password"
+                      className="block text-xs font-medium uppercase tracking-[0.2em] text-[var(--color-text-dim)]"
+                    >
                       Password
                     </label>
                     <input
+                      id="auth-password"
                       type="password"
                       autoComplete="current-password"
                       value={password}
@@ -215,6 +267,61 @@ export function AuthPageClient({ redirectTo, reason }: AuthPageClientProps) {
                     {submitting ? "Signing in..." : "Sign in"}
                   </button>
                 </form>
+
+                <div className="mt-10 border-t border-[var(--color-border)] pt-8">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                        Password reset
+                      </p>
+                      <h3 className="mt-2 font-display text-2xl font-bold tracking-tight">
+                        Request a secure recovery link
+                      </h3>
+                    </div>
+                    <StatusBadge>Recovery</StatusBadge>
+                  </div>
+
+                  <p className="mt-4 max-w-xl text-sm leading-relaxed text-[var(--color-text-muted)]">
+                    Existing users can reset their password without admin intervention. Recovery
+                    links land on the in-app password setup screen.
+                  </p>
+
+                  {resetMessage && (
+                    <div className="mt-6 flex items-start gap-3 border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
+                      <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" />
+                      <p className="text-sm leading-relaxed text-emerald-200">{resetMessage}</p>
+                    </div>
+                  )}
+
+                  <form onSubmit={handlePasswordReset} className="mt-6 space-y-6">
+                    <div>
+                      <label
+                        htmlFor="reset-email"
+                        className="block text-xs font-medium uppercase tracking-[0.2em] text-[var(--color-text-dim)]"
+                      >
+                        Recovery email
+                      </label>
+                      <input
+                        id="reset-email"
+                        type="email"
+                        autoComplete="email"
+                        value={resetEmail}
+                        onChange={(event) => setResetEmail(event.target.value)}
+                        placeholder="Use your account email"
+                        className="mt-3 w-full border-b border-[var(--color-border)] bg-transparent pb-3 text-base text-[var(--color-text)] placeholder:text-[var(--color-text-dim)] focus:border-[var(--color-accent)] focus:outline-none"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={resetting || !authConfigured}
+                      className="inline-flex items-center gap-3 border border-[var(--color-border)] px-5 py-4 text-sm text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-accent)]/30 hover:text-[var(--color-text)] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <KeyRound className="h-4 w-4 text-[var(--color-accent)]" />
+                      {resetting ? "Sending reset link..." : "Send reset link"}
+                    </button>
+                  </form>
+                </div>
               </div>
             </Reveal>
 

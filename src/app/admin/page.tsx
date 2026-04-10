@@ -1,4 +1,5 @@
 import { ShieldAlert } from "lucide-react";
+import { InviteUserCard } from "@/components/admin/invite-user-card";
 import { Footer } from "@/components/layout/footer";
 import { Navigation } from "@/components/layout/navigation";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -100,6 +101,12 @@ export default async function AdminPage() {
               </div>
             ))}
           </div>
+
+          {viewer.role === "admin" && (
+            <div className="mt-12">
+              <InviteUserCard />
+            </div>
+          )}
         </div>
       </section>
       <Footer />

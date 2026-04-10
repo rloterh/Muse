@@ -16,3 +16,19 @@ export function getSupabaseEnv() {
 
   return { url, anonKey };
 }
+
+export function getSupabaseServiceRoleKey() {
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!serviceRoleKey) {
+    throw new Error(
+      "SUPABASE_SERVICE_ROLE_KEY is missing. Add it to the local/server environment for admin onboarding flows."
+    );
+  }
+
+  return serviceRoleKey;
+}
+
+export function getAppUrl() {
+  return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+}
