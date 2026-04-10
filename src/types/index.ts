@@ -168,15 +168,24 @@ export interface InquiryPreview {
   id: string;
   company: string;
   contact: string;
+  email?: string;
+  website?: string;
   budget: string;
   timeline: string;
   services: string[];
   source: string;
   region: string;
+  projectFocus?: string;
+  referralSource?: string;
   status: InquiryStatus;
   routing: InquiryRouting;
   notes: string;
   attribution?: InquiryAttribution;
+  goals?: string;
+  message?: string;
+  notificationDelivered?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface SiteMetric {

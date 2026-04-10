@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { contactEmailHtml, sendEmail } from "@/lib/email/send";
+import { buildInquiryRecordDefaults, createInquiryRecord, updateInquiryNotificationStatus } from "@/lib/inquiries/repository";
 import {
   budgetRanges,
   projectFocusOptions,
@@ -7,7 +8,7 @@ import {
   serviceOptions,
   timelineOptions,
 } from "@/lib/site/config";
-import { inferInquiryStatus, qualifyInquiry } from "@/lib/inquiries/qualification";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 const rateLimit = new Map<string, { count: number; resetAt: number }>();
 const MAX_REQUESTS = 5;
@@ -124,13 +125,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid website URL." }, { status: 400 });
     }
 
-    const routing = qualifyInquiry({
+    const { routing, status, source, notes } = buildInquiryRecordDefaults({
       budget,
       timeline,
       services,
       projectFocus,
+      referralSource,
+      message,
+      attribution,
     });
-    const status = inferInquiryStatus(routing.priority);
 
     const recipientEmail = process.env.CONTACT_EMAIL ?? "hello@muse.agency";
     const html = contactEmailHtml({
@@ -151,6 +154,36 @@ export async function POST(request: Request) {
       attribution,
     });
 
+    let storedInquiry = null;
+
+    if (isSupabaseConfigured()) {
+      try {
+        storedInquiry = await createInquiryRecord({
+          name,
+          email,
+          company,
+          website,
+          region,
+          budget,
+          timeline,
+          projectFocus,
+          referralSource,
+          services,
+          goals,
+          message,
+          consent,
+          source,
+          status,
+          routing,
+          notes,
+          attribution,
+          notificationDelivered: false,
+        });
+      } catch (error) {
+        console.error("Inquiry persistence error:", error);
+      }
+    }
+
     const sent = await sendEmail({
       to: recipientEmail,
       subject: `[${routing.priority.toUpperCase()}] New inquiry from ${name}${company ? ` (${company})` : ""}`,
@@ -158,7 +191,12 @@ export async function POST(request: Request) {
       replyTo: email,
     });
 
-    if (!sent) {
+    if (storedInquiry && sent) {
+      await updateInquiryNotificationStatus(storedInquiry.id, true);
+      storedInquiry.notificationDelivered = true;
+    }
+
+    if (!sent && !storedInquiry) {
       return NextResponse.json(
         { error: "Failed to send message. Please try again." },
         { status: 500 }
@@ -168,9 +206,11 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       inquiry: {
+        id: storedInquiry?.id,
         status,
         routing,
         attribution,
+        notificationDelivered: sent,
       },
     });
   } catch (error) {

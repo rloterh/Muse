@@ -7,13 +7,15 @@ import { Navigation } from "@/components/layout/navigation";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Reveal } from "@/components/ui/reveal";
 import { requireViewerRole } from "@/lib/auth/viewer";
+import { getInquiryPipeline } from "@/lib/inquiries/repository";
 import { inquirySummary, moderationSummary, siteSettings } from "@/lib/site/config";
 
 const summary = moderationSummary(siteSettings.moderationQueue);
-const inquiryStats = inquirySummary(siteSettings.inquiryPipeline);
 
 export default async function AdminPage() {
   const viewer = await requireViewerRole("editor", "/admin");
+  const inquiries = await getInquiryPipeline();
+  const inquiryStats = inquirySummary(inquiries);
 
   return (
     <>
@@ -132,8 +134,8 @@ export default async function AdminPage() {
             ))}
           </div>
 
-          <InquiryPipeline inquiries={siteSettings.inquiryPipeline} />
-          <ConversionReporting inquiries={siteSettings.inquiryPipeline} />
+          <InquiryPipeline inquiries={inquiries} />
+          <ConversionReporting inquiries={inquiries} />
 
           {viewer.role === "admin" && (
             <div className="mt-12">
