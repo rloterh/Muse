@@ -10,6 +10,17 @@ if (!url || !serviceRoleKey) {
   process.exit(1);
 }
 
+function requireEnv(name) {
+  const value = process.env[name];
+
+  if (!value) {
+    console.error(`Missing ${name} in .env.local.`);
+    process.exit(1);
+  }
+
+  return value;
+}
+
 const supabase = createClient(url, serviceRoleKey, {
   auth: {
     autoRefreshToken: false,
@@ -19,8 +30,8 @@ const supabase = createClient(url, serviceRoleKey, {
 
 const seedUsers = [
   {
-    email: "editor@muse.agency",
-    password: "MuseEditor!2026#Ops",
+    email: requireEnv("QA_EDITOR_EMAIL"),
+    password: requireEnv("QA_EDITOR_PASSWORD"),
     profile: {
       full_name: "Amara Lewis",
       title: "Content Producer",
@@ -29,8 +40,8 @@ const seedUsers = [
     },
   },
   {
-    email: "admin@muse.agency",
-    password: "MuseAdmin!2026#Ops",
+    email: requireEnv("QA_ADMIN_EMAIL"),
+    password: requireEnv("QA_ADMIN_PASSWORD"),
     profile: {
       full_name: "Robert Loterh",
       title: "Operations Director",
@@ -40,30 +51,52 @@ const seedUsers = [
   },
 ];
 
-async function getUserByEmail(email) {
-  const { data, error } = await supabase.auth.admin.listUsers();
+async function listAllUsers() {
+  const users = [];
+  let page = 1;
 
-  if (error) {
-    throw error;
+  while (true) {
+    const { data, error } = await supabase.auth.admin.listUsers({
+      page,
+      perPage: 200,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    users.push(...data.users);
+
+    if (data.users.length < 200) {
+      break;
+    }
+
+    page += 1;
   }
 
-  return data.users.find((user) => user.email?.toLowerCase() === email.toLowerCase()) ?? null;
+  return users;
+}
+
+async function getUserByEmail(email) {
+  const users = await listAllUsers();
+  return users.find((user) => user.email?.toLowerCase() === email.toLowerCase()) ?? null;
 }
 
 async function upsertUser(seedUser) {
   const existing = await getUserByEmail(seedUser.email);
+  const metadata = {
+    full_name: seedUser.profile.full_name,
+    title: seedUser.profile.title,
+    company: seedUser.profile.company,
+    role: seedUser.profile.role,
+  };
 
   if (existing) {
     const { data, error } = await supabase.auth.admin.updateUserById(existing.id, {
       email: seedUser.email,
       password: seedUser.password,
       email_confirm: true,
-      user_metadata: {
-        full_name: seedUser.profile.full_name,
-        title: seedUser.profile.title,
-        company: seedUser.profile.company,
-        role: seedUser.profile.role,
-      },
+      user_metadata: metadata,
       app_metadata: {
         role: seedUser.profile.role,
         title: seedUser.profile.title,
@@ -82,12 +115,7 @@ async function upsertUser(seedUser) {
     email: seedUser.email,
     password: seedUser.password,
     email_confirm: true,
-    user_metadata: {
-      full_name: seedUser.profile.full_name,
-      title: seedUser.profile.title,
-      company: seedUser.profile.company,
-      role: seedUser.profile.role,
-    },
+    user_metadata: metadata,
     app_metadata: {
       role: seedUser.profile.role,
       title: seedUser.profile.title,

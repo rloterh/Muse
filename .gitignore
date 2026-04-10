@@ -11,3 +11,5 @@ docs/
 .env.*
 .codex
 AGENTS.md
+playwright-report/
+test-results/
