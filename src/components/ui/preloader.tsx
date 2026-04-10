@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export function Preloader() {
   const [progress, setProgress] = useState(0);
-  const [complete, setComplete] = useState(false);
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
@@ -14,7 +13,6 @@ export function Preloader() {
       setProgress((prev) => {
         if (prev >= 100) {
           clearInterval(interval);
-          setTimeout(() => setComplete(true), 300);
           setTimeout(() => setVisible(false), 1200);
           return 100;
         }

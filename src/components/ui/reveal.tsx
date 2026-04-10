@@ -2,7 +2,6 @@
 
 import { motion } from "framer-motion";
 import type { ReactNode } from "react";
-import { cn } from "@/lib/utils/cn";
 
 interface RevealProps {
   children: ReactNode;
@@ -38,7 +37,15 @@ export function Reveal({ children, className, delay = 0, direction = "up" }: Rev
   );
 }
 
-export function RevealText({ children, className, delay = 0 }: { children: ReactNode; className?: string; delay?: number }) {
+export function RevealText({
+  children,
+  className,
+  delay = 0,
+}: {
+  children: ReactNode;
+  className?: string;
+  delay?: number;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -52,7 +59,15 @@ export function RevealText({ children, className, delay = 0 }: { children: React
   );
 }
 
-export function StaggerContainer({ children, className, stagger = 0.1 }: { children: ReactNode; className?: string; stagger?: number }) {
+export function StaggerContainer({
+  children,
+  className,
+  stagger = 0.1,
+}: {
+  children: ReactNode;
+  className?: string;
+  stagger?: number;
+}) {
   return (
     <motion.div
       initial="hidden"

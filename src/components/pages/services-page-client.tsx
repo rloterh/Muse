@@ -44,17 +44,18 @@ export function ServicesPageClient({ services }: ServicesPageClientProps) {
       <section className="px-8 pb-20 pt-40 lg:px-12">
         <div className="mx-auto max-w-7xl">
           <Reveal>
-            <p className="text-xs font-medium uppercase tracking-[0.3em] text-[var(--color-text-dim)]">Capabilities</p>
+            <p className="text-xs font-medium uppercase tracking-[0.3em] text-[var(--color-text-dim)]">
+              Capabilities
+            </p>
             <h1 className="mt-4 max-w-4xl font-display text-5xl font-bold leading-[0.95] tracking-tight lg:text-7xl">
               Everything you need,{" "}
-              <span className="italic text-[var(--color-accent)]">nothing</span>{" "}
-              you do not
+              <span className="italic text-[var(--color-accent)]">nothing</span> you do not
             </h1>
           </Reveal>
           <Reveal delay={0.2}>
             <p className="mt-8 max-w-xl text-lg leading-relaxed text-[var(--color-text-muted)]">
-              We offer a focused set of services, each executed with depth and precision.
-              No fluff, no filler. Just the expertise that moves the needle.
+              We offer a focused set of services, each executed with depth and precision. No fluff,
+              no filler. Just the expertise that moves the needle.
             </p>
           </Reveal>
         </div>
@@ -82,6 +83,11 @@ export function ServicesPageClient({ services }: ServicesPageClientProps) {
                             <p className="mt-4 max-w-lg text-sm leading-relaxed text-[var(--color-text-muted)]">
                               {service.description}
                             </p>
+                            {service.deliveryModel && (
+                              <p className="mt-3 text-xs uppercase tracking-[0.22em] text-[var(--color-text-dim)]">
+                                {service.deliveryModel}
+                              </p>
+                            )}
                           </div>
                           <Icon className="mt-2 h-6 w-6 shrink-0 text-[var(--color-text-dim)] transition-colors group-hover:text-[var(--color-accent)]" />
                         </div>
@@ -111,22 +117,47 @@ export function ServicesPageClient({ services }: ServicesPageClientProps) {
       <section className="border-t border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-8 py-32 lg:px-12">
         <div className="mx-auto max-w-7xl">
           <Reveal>
-            <p className="text-xs font-medium uppercase tracking-[0.3em] text-[var(--color-text-dim)]">How we work</p>
+            <p className="text-xs font-medium uppercase tracking-[0.3em] text-[var(--color-text-dim)]">
+              How we work
+            </p>
             <h2 className="mt-3 font-display text-4xl font-bold tracking-tight">Our process</h2>
           </Reveal>
 
-          <StaggerContainer className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-4" stagger={0.1}>
+          <StaggerContainer
+            className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-4"
+            stagger={0.1}
+          >
             {[
-              { step: "01", title: "Discover", desc: "Deep research into your brand, audience, and competitive landscape." },
-              { step: "02", title: "Define", desc: "Strategic framework and creative direction aligned with business goals." },
-              { step: "03", title: "Design", desc: "Iterative design with continuous feedback and collaborative refinement." },
-              { step: "04", title: "Deliver", desc: "Production-ready output with documentation and ongoing support." },
+              {
+                step: "01",
+                title: "Discover",
+                desc: "Deep research into your brand, audience, and competitive landscape.",
+              },
+              {
+                step: "02",
+                title: "Define",
+                desc: "Strategic framework and creative direction aligned with business goals.",
+              },
+              {
+                step: "03",
+                title: "Design",
+                desc: "Iterative design with continuous feedback and collaborative refinement.",
+              },
+              {
+                step: "04",
+                title: "Deliver",
+                desc: "Production-ready output with documentation and ongoing support.",
+              },
             ].map((phase) => (
               <StaggerItem key={phase.step}>
                 <div className="border-t border-[var(--color-border)] pt-6">
-                  <span className="font-display text-xs font-bold text-[var(--color-accent)]">{phase.step}</span>
+                  <span className="font-display text-xs font-bold text-[var(--color-accent)]">
+                    {phase.step}
+                  </span>
                   <h3 className="mt-3 font-display text-xl font-bold">{phase.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-[var(--color-text-muted)]">{phase.desc}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-[var(--color-text-muted)]">
+                    {phase.desc}
+                  </p>
                 </div>
               </StaggerItem>
             ))}
