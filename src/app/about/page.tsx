@@ -1,21 +1,8 @@
 import { AboutPageClient } from "@/components/pages/about-page-client";
-import { fallbackTeamMembers } from "@/lib/content/fallback-data";
-import { getTeamMembers } from "@/lib/sanity/fetchers";
-import type { TeamMember } from "@/types";
+import { resolveTeamMembers } from "@/lib/content/resolvers";
 
 export default async function AboutPage() {
-  let team: TeamMember[] = fallbackTeamMembers;
-
-  if (process.env.NEXT_PUBLIC_SANITY_PROJECT_ID) {
-    try {
-      const data = await getTeamMembers();
-      if (data.length > 0) {
-        team = data;
-      }
-    } catch {
-      team = fallbackTeamMembers;
-    }
-  }
+  const team = await resolveTeamMembers();
 
   return <AboutPageClient team={team} />;
 }

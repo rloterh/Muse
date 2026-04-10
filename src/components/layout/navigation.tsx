@@ -1,65 +1,81 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { AuthMenu } from "@/components/layout/auth-menu";
+import { siteSettings } from "@/lib/site/config";
+import { canAccessRole, useViewerStore } from "@/stores/viewer-store";
 import { cn } from "@/lib/utils/cn";
 
-const navLinks = [
-  { label: "Work", href: "/work", num: "01" },
-  { label: "About", href: "/about", num: "02" },
-  { label: "Services", href: "/services", num: "03" },
-  { label: "Contact", href: "/contact", num: "04" },
-];
-
-const socialLinks = [
-  { label: "Instagram", href: "#" },
-  { label: "Dribbble", href: "#" },
-  { label: "LinkedIn", href: "#" },
-  { label: "Twitter", href: "#" },
-];
-
 export function Navigation() {
-  const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
+  const viewer = useViewerStore((state) => state.viewer);
+  const isOpen = useViewerStore((state) => state.menuOpen);
+  const setMenuOpen = useViewerStore((state) => state.setMenuOpen);
+  const closeOverlays = useViewerStore((state) => state.closeOverlays);
+
+  const overlayLinks = canAccessRole(viewer, "editor")
+    ? [...siteSettings.navLinks, { label: "Admin", href: "/admin", num: "05" }]
+    : siteSettings.navLinks;
 
   return (
     <>
-      {/* Header bar */}
-      <header className="fixed left-0 right-0 top-0 z-50 flex h-20 items-center justify-between px-8 mix-blend-difference lg:px-12">
-        <Link href="/" className="relative z-50" onClick={() => setIsOpen(false)}>
+      <header className="fixed left-0 right-0 top-0 z-50 flex h-20 items-center justify-between px-6 mix-blend-difference lg:px-12">
+        <Link href="/" className="relative z-50" onClick={closeOverlays}>
           <span className="font-display text-xl font-bold tracking-tight text-white">
-            MUSE
+            {siteSettings.brandName.toUpperCase()}
           </span>
         </Link>
 
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className="relative z-50 flex items-center gap-3"
-          aria-label="Toggle menu"
-        >
-          <span className="text-xs font-medium uppercase tracking-[0.3em] text-white">
-            {isOpen ? "Close" : "Menu"}
-          </span>
-          <div className="flex h-6 w-8 flex-col items-end justify-center gap-1.5">
-            <motion.span
-              animate={isOpen ? { rotate: 45, y: 4, width: "100%" } : { rotate: 0, y: 0, width: "100%" }}
-              className="block h-[1.5px] bg-white"
-              style={{ width: "100%" }}
-              transition={{ duration: 0.3 }}
-            />
-            <motion.span
-              animate={isOpen ? { rotate: -45, y: -4, width: "100%" } : { rotate: 0, y: 0, width: "75%" }}
-              className="block h-[1.5px] bg-white"
-              style={{ width: isOpen ? "100%" : "75%" }}
-              transition={{ duration: 0.3 }}
-            />
-          </div>
-        </button>
+        <div className="relative z-50 flex items-center gap-3">
+          <nav className="hidden items-center gap-6 xl:flex">
+            {siteSettings.navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={cn(
+                  "text-[10px] font-medium uppercase tracking-[0.24em] text-white/75 transition-colors hover:text-white",
+                  pathname === link.href && "text-[var(--color-accent)]"
+                )}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+
+          <AuthMenu className="hidden md:block" />
+
+          <button
+            onClick={() => setMenuOpen(!isOpen)}
+            className="relative flex items-center gap-3"
+            aria-label="Toggle menu"
+          >
+            <span className="text-xs font-medium uppercase tracking-[0.3em] text-white">
+              {isOpen ? "Close" : "Menu"}
+            </span>
+            <div className="flex h-6 w-8 flex-col items-end justify-center gap-1.5">
+              <motion.span
+                animate={
+                  isOpen ? { rotate: 45, y: 4, width: "100%" } : { rotate: 0, y: 0, width: "100%" }
+                }
+                className="block h-[1.5px] bg-white"
+                style={{ width: "100%" }}
+                transition={{ duration: 0.3 }}
+              />
+              <motion.span
+                animate={
+                  isOpen ? { rotate: -45, y: -4, width: "100%" } : { rotate: 0, y: 0, width: "75%" }
+                }
+                className="block h-[1.5px] bg-white"
+                style={{ width: isOpen ? "100%" : "75%" }}
+                transition={{ duration: 0.3 }}
+              />
+            </div>
+          </button>
+        </div>
       </header>
 
-      {/* Full-screen overlay */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -69,20 +85,23 @@ export function Navigation() {
             transition={{ duration: 0.5 }}
             className="fixed inset-0 z-40 flex bg-[var(--color-bg)]"
           >
-            {/* Left side — nav links */}
             <div className="flex flex-1 flex-col justify-center px-12 lg:px-24">
               <nav className="space-y-2">
-                {navLinks.map((link, i) => (
+                {overlayLinks.map((link, index) => (
                   <motion.div
                     key={link.href}
                     initial={{ opacity: 0, x: -40 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.5, delay: 0.1 + i * 0.08, ease: [0.25, 0.46, 0.45, 0.94] }}
+                    transition={{
+                      duration: 0.5,
+                      delay: 0.1 + index * 0.08,
+                      ease: [0.25, 0.46, 0.45, 0.94],
+                    }}
                   >
                     <Link
                       href={link.href}
-                      onClick={() => setIsOpen(false)}
+                      onClick={closeOverlays}
                       className="group flex items-baseline gap-4"
                     >
                       <span className="text-xs font-body text-[var(--color-text-dim)] transition-colors group-hover:text-[var(--color-accent)]">
@@ -104,7 +123,6 @@ export function Navigation() {
               </nav>
             </div>
 
-            {/* Right side — info */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -117,10 +135,10 @@ export function Navigation() {
                     Get in touch
                   </p>
                   <a
-                    href="mailto:hello@muse.agency"
+                    href={`mailto:${siteSettings.contactEmail}`}
                     className="mt-2 block font-body text-lg text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-accent)]"
                   >
-                    hello@muse.agency
+                    {siteSettings.contactEmail}
                   </a>
                 </div>
 
@@ -129,10 +147,12 @@ export function Navigation() {
                     Follow us
                   </p>
                   <div className="mt-3 flex flex-col gap-2">
-                    {socialLinks.map((link) => (
+                    {siteSettings.socials.map((link) => (
                       <a
                         key={link.label}
                         href={link.href}
+                        target="_blank"
+                        rel="noreferrer"
                         className="font-body text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-accent)]"
                       >
                         {link.label}
@@ -142,8 +162,38 @@ export function Navigation() {
                 </div>
 
                 <div>
+                  <p className="text-xs font-medium uppercase tracking-[0.3em] text-[var(--color-text-dim)]">
+                    Account
+                  </p>
+                  <div className="mt-3 space-y-2">
+                    {viewer ? (
+                      <>
+                        <p className="font-body text-sm text-[var(--color-text-muted)]">
+                          {viewer.name} · {viewer.role}
+                        </p>
+                        <Link
+                          href="/auth"
+                          onClick={closeOverlays}
+                          className="block text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-accent)]"
+                        >
+                          Switch preview access
+                        </Link>
+                      </>
+                    ) : (
+                      <Link
+                        href="/auth"
+                        onClick={closeOverlays}
+                        className="block text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-accent)]"
+                      >
+                        Open preview access
+                      </Link>
+                    )}
+                  </div>
+                </div>
+
+                <div>
                   <p className="text-xs text-[var(--color-text-dim)]">
-                    &copy; {new Date().getFullYear()} Muse Creative Agency
+                    &copy; {new Date().getFullYear()} {siteSettings.brandName} Creative Agency
                   </p>
                 </div>
               </div>
