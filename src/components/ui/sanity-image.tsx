@@ -31,10 +31,17 @@ export function SanityImage({
   if (!image?.asset) {
     return (
       <div
-        className={cn("bg-[var(--color-bg-elevated)] flex items-center justify-center", className)}
+        className={cn(
+          "ambient-media relative flex items-center justify-center overflow-hidden bg-[var(--color-bg-elevated)]",
+          className
+        )}
         style={fill ? undefined : { width, height }}
       >
-        <span className="text-xs text-[var(--color-text-dim)]">No image</span>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(200,149,108,0.18),_transparent_58%)]" />
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/35 to-transparent" />
+        <span className="relative z-10 text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+          Media pending
+        </span>
       </div>
     );
   }
@@ -60,7 +67,7 @@ export function SanityImage({
         priority={priority}
         placeholder="blur"
         blurDataURL={blurUrl}
-        className={cn("object-cover", className)}
+        className={cn("object-cover transition-transform duration-700", className)}
       />
     );
   }
@@ -75,7 +82,7 @@ export function SanityImage({
       priority={priority}
       placeholder="blur"
       blurDataURL={blurUrl}
-      className={className}
+      className={cn("transition-transform duration-700", className)}
     />
   );
 }
