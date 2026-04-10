@@ -56,7 +56,10 @@ export const CASE_STUDY_QUERY = `*[_type == "caseStudy" && slug.current == $slug
   outcomes[]{ label, value, context },
   services[]->{ _id, title, slug },
   coverImage, gallery[]{asset, alt, caption},
-  challenge, approach, results,
+  challenge, approach, results, timeline, teamSize, scope,
+  projectFacts[]{ label, value, detail },
+  milestones[]{ phase, title, summary },
+  links[]{ label, href },
   testimonial{ quote, author, role },
   nextProject->{ title, slug, coverImage }
 }`;
@@ -66,7 +69,8 @@ export const TEAM_QUERY = `*[_type == "teamMember"] | order(order asc) {
 }`;
 
 export const SERVICES_QUERY = `*[_type == "service"] | order(order asc) {
-  _id, title, slug, description, icon, features, deliveryModel
+  _id, title, slug, description, icon, features, deliveryModel,
+  faqs[]{ question, answer }
 }`;
 
 export const HOMEPAGE_QUERY = `*[_type == "homepage"][0]{

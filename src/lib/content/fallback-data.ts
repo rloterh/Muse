@@ -13,7 +13,27 @@ export const fallbackCaseStudies: CaseStudy[] = [
     engagement: "Brand transformation",
     featured: true,
     status: "published",
+    timeline: "12 weeks",
+    teamSize: "6 specialists",
+    scope: "Brand, web, and launch communications",
     deliverables: ["Brand strategy", "Visual identity", "Marketing site"],
+    projectFacts: [
+      {
+        label: "Audience",
+        value: "Growth-stage healthcare teams",
+        detail: "Positioned for operators, clinicians, and commercial buyers.",
+      },
+      {
+        label: "Launch window",
+        value: "Q1 2025",
+        detail: "Timed to product expansion and a new funding milestone.",
+      },
+      {
+        label: "Platform stack",
+        value: "Next.js + Sanity",
+        detail: "Fast editorial updates with a premium narrative layer.",
+      },
+    ],
     outcomes: [
       {
         label: "Launch lift",
@@ -21,6 +41,30 @@ export const fallbackCaseStudies: CaseStudy[] = [
         context: "Higher branded search volume in the first quarter.",
       },
       { label: "Conversion", value: "2.4x", context: "Improvement in demo-request conversion." },
+    ],
+    milestones: [
+      {
+        phase: "Discover",
+        title: "Clarified the category story",
+        summary:
+          "We aligned leadership on a sharper healthcare positioning strategy before any visual work began.",
+      },
+      {
+        phase: "Design",
+        title: "Built a premium visual system",
+        summary:
+          "A restrained editorial palette and motion language helped the product feel credible and calm.",
+      },
+      {
+        phase: "Launch",
+        title: "Connected story to conversion",
+        summary:
+          "The new site paired proof-rich storytelling with clearer demo-request pathways for enterprise buyers.",
+      },
+    ],
+    links: [
+      { label: "Launch story", href: "/contact" },
+      { label: "Request similar engagement", href: "/contact" },
     ],
     coverImage: null,
     services: [{ _id: "brand-strategy", title: "Branding" }],
@@ -37,7 +81,27 @@ export const fallbackCaseStudies: CaseStudy[] = [
     engagement: "Product design system",
     featured: true,
     status: "review",
+    timeline: "16 weeks",
+    teamSize: "8 operators",
+    scope: "UX architecture, dashboard system, and rollout toolkit",
     deliverables: ["UX architecture", "Dashboard design", "Frontend implementation"],
+    projectFacts: [
+      {
+        label: "Core challenge",
+        value: "Dense analyst workflows",
+        detail: "The platform had depth, but critical paths were hard to scan and trust quickly.",
+      },
+      {
+        label: "Stakeholders",
+        value: "Product, data, and revenue teams",
+        detail: "The system had to align internal operators around one reporting language.",
+      },
+      {
+        label: "Delivery rhythm",
+        value: "Weekly release cadence",
+        detail: "The design system was built to support continuous product rollout.",
+      },
+    ],
     outcomes: [
       {
         label: "Task completion",
@@ -50,6 +114,27 @@ export const fallbackCaseStudies: CaseStudy[] = [
         context: "Feature adoption across pilot teams in six weeks.",
       },
     ],
+    milestones: [
+      {
+        phase: "Map",
+        title: "Prioritized high-value workflows",
+        summary:
+          "We ranked analyst journeys by revenue sensitivity and data confidence requirements.",
+      },
+      {
+        phase: "Systemize",
+        title: "Created a scalable dashboard grammar",
+        summary:
+          "Patterns were codified for navigation, comparison states, and evidence hierarchy.",
+      },
+      {
+        phase: "Roll out",
+        title: "Shipped with internal enablement",
+        summary:
+          "We paired UI delivery with adoption guidance so product and CS teams could support launch.",
+      },
+    ],
+    links: [{ label: "Talk to the product team", href: "/contact" }],
     coverImage: null,
     services: [{ _id: "product-design", title: "Product Design" }],
   },
@@ -65,7 +150,22 @@ export const fallbackCaseStudies: CaseStudy[] = [
     engagement: "Launch campaign",
     featured: true,
     status: "scheduled",
+    timeline: "10 weeks",
+    teamSize: "5 specialists",
+    scope: "Narrative, interactive launch site, and campaign assets",
     deliverables: ["Launch messaging", "Interactive site", "Campaign toolkit"],
+    projectFacts: [
+      {
+        label: "Market",
+        value: "Security-conscious mid-market teams",
+        detail: "The narrative needed trust without losing startup velocity.",
+      },
+      {
+        label: "Primary KPI",
+        value: "Pipeline quality",
+        detail: "The launch focused on attracting more qualified technical buyers.",
+      },
+    ],
     coverImage: null,
     services: [{ _id: "web-development", title: "Web Development" }],
   },
@@ -81,6 +181,9 @@ export const fallbackCaseStudies: CaseStudy[] = [
     engagement: "Immersive product storytelling",
     status: "published",
     deliverables: ["3D motion system", "Spatial storyboards", "Product microsite"],
+    timeline: "9 weeks",
+    teamSize: "4 specialists",
+    scope: "Immersive storytelling and motion-led commerce support",
     coverImage: null,
     services: [{ _id: "motion-3d", title: "3D / WebGL" }],
   },
@@ -95,6 +198,9 @@ export const fallbackCaseStudies: CaseStudy[] = [
     sector: "Developer Tools",
     engagement: "Design systems",
     status: "published",
+    timeline: "20 weeks",
+    teamSize: "9 contributors",
+    scope: "Design language, governance, and product rollout support",
     coverImage: null,
     services: [{ _id: "product-design-2", title: "Product Design" }],
   },
@@ -109,6 +215,9 @@ export const fallbackCaseStudies: CaseStudy[] = [
     sector: "Architecture",
     engagement: "Identity and launch",
     status: "draft",
+    timeline: "8 weeks",
+    teamSize: "5 contributors",
+    scope: "Brand refresh and web presence",
     coverImage: null,
     services: [{ _id: "branding-2", title: "Branding" }],
   },
@@ -130,6 +239,13 @@ export const fallbackServices: Service[] = [
     ],
     order: 1,
     deliveryModel: "Discovery sprint and executive workshop",
+    faqs: [
+      {
+        question: "When is brand strategy the right engagement?",
+        answer:
+          "It is best when positioning is unclear, new offers are emerging, or teams need strategic alignment before design or launch work starts.",
+      },
+    ],
   },
   {
     _id: "visual-identity",
@@ -146,6 +262,13 @@ export const fallbackServices: Service[] = [
     ],
     order: 2,
     deliveryModel: "Identity program with rollout toolkit",
+    faqs: [
+      {
+        question: "What does the rollout toolkit include?",
+        answer:
+          "We typically include assets, guidance, and implementation patterns so the identity holds together across web, product, and marketing surfaces.",
+      },
+    ],
   },
   {
     _id: "digital-design",
@@ -156,6 +279,13 @@ export const fallbackServices: Service[] = [
     features: ["UI/UX design", "Design systems", "Prototyping", "User research", "Accessibility"],
     order: 3,
     deliveryModel: "Design sprints and product squads",
+    faqs: [
+      {
+        question: "Do you work inside existing product teams?",
+        answer:
+          "Yes. We often embed with product and engineering teams to accelerate delivery while keeping the system maintainable.",
+      },
+    ],
   },
   {
     _id: "web-development",
@@ -172,6 +302,13 @@ export const fallbackServices: Service[] = [
     ],
     order: 4,
     deliveryModel: "Product engineering pod with launch support",
+    faqs: [
+      {
+        question: "Can development engagements include CMS and performance work?",
+        answer:
+          "Yes. Content modeling, headless CMS integration, performance tuning, and launch-readiness are common parts of the delivery.",
+      },
+    ],
   },
   {
     _id: "motion-3d",
@@ -188,6 +325,13 @@ export const fallbackServices: Service[] = [
     ],
     order: 5,
     deliveryModel: "Motion concept to production rollout",
+    faqs: [
+      {
+        question: "How do you keep 3D and motion performant?",
+        answer:
+          "We scope motion to the moments that matter, load media progressively, and keep reduced-motion behavior in mind from the start.",
+      },
+    ],
   },
   {
     _id: "product-design",
@@ -204,6 +348,13 @@ export const fallbackServices: Service[] = [
     ],
     order: 6,
     deliveryModel: "Embedded design leadership for complex products",
+    faqs: [
+      {
+        question: "Can product design run alongside brand or marketing work?",
+        answer:
+          "Yes. We often connect product UX decisions to positioning, onboarding, and go-to-market storytelling so the experience feels coherent.",
+      },
+    ],
   },
 ];
 

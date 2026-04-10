@@ -67,6 +67,53 @@ export const caseStudySchema = {
     { name: "challenge", title: "The Challenge", type: "array", of: [{ type: "block" }] },
     { name: "approach", title: "Our Approach", type: "array", of: [{ type: "block" }] },
     { name: "results", title: "Results", type: "array", of: [{ type: "block" }] },
+    { name: "timeline", title: "Timeline", type: "string" },
+    { name: "teamSize", title: "Team Size", type: "string" },
+    { name: "scope", title: "Scope", type: "string" },
+    {
+      name: "projectFacts",
+      title: "Project Facts",
+      type: "array",
+      of: [
+        {
+          type: "object",
+          fields: [
+            { name: "label", type: "string" },
+            { name: "value", type: "string" },
+            { name: "detail", type: "text", rows: 2 },
+          ],
+        },
+      ],
+    },
+    {
+      name: "milestones",
+      title: "Milestones",
+      type: "array",
+      of: [
+        {
+          type: "object",
+          fields: [
+            { name: "phase", type: "string" },
+            { name: "title", type: "string" },
+            { name: "summary", type: "text", rows: 3 },
+          ],
+        },
+      ],
+    },
+    {
+      name: "links",
+      title: "Project Links",
+      type: "array",
+      of: [
+        {
+          type: "object",
+          fields: [
+            { name: "label", type: "string" },
+            { name: "href", type: "string" },
+          ],
+        },
+      ],
+    },
     {
       name: "testimonial",
       title: "Testimonial",
@@ -92,6 +139,20 @@ export const serviceSchema = {
     { name: "icon", title: "Icon Name", type: "string" },
     { name: "features", title: "Features", type: "array", of: [{ type: "string" }] },
     { name: "deliveryModel", title: "Delivery Model", type: "string" },
+    {
+      name: "faqs",
+      title: "FAQs",
+      type: "array",
+      of: [
+        {
+          type: "object",
+          fields: [
+            { name: "question", type: "string" },
+            { name: "answer", type: "text", rows: 3 },
+          ],
+        },
+      ],
+    },
     { name: "order", title: "Sort Order", type: "number" },
   ],
 };
