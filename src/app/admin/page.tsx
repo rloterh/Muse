@@ -1,4 +1,5 @@
 import { ShieldAlert } from "lucide-react";
+import { ConversionReporting } from "@/components/admin/conversion-reporting";
 import { InquiryPipeline } from "@/components/admin/inquiry-pipeline";
 import { InviteUserCard } from "@/components/admin/invite-user-card";
 import { Footer } from "@/components/layout/footer";
@@ -132,6 +133,7 @@ export default async function AdminPage() {
           </div>
 
           <InquiryPipeline inquiries={siteSettings.inquiryPipeline} />
+          <ConversionReporting inquiries={siteSettings.inquiryPipeline} />
 
           {viewer.role === "admin" && (
             <div className="mt-12">

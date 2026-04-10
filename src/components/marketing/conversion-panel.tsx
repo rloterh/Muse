@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight, Download, FileText } from "lucide-react";
+import { readStoredAttribution, trackEvent } from "@/lib/analytics/events";
 
 interface ConversionPanelProps {
   eyebrow: string;
@@ -12,6 +13,7 @@ interface ConversionPanelProps {
   secondaryHref?: string;
   secondaryLabel?: string;
   note?: string;
+  location?: string;
 }
 
 export function ConversionPanel({
@@ -23,6 +25,7 @@ export function ConversionPanel({
   secondaryHref = "/api/capability-deck",
   secondaryLabel = "Download capability deck",
   note,
+  location = "shared",
 }: ConversionPanelProps) {
   return (
     <section className="border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-8 py-10 lg:px-10 lg:py-12">
@@ -48,6 +51,16 @@ export function ConversionPanel({
         <div className="flex flex-col gap-3 sm:flex-row">
           <Link
             href={primaryHref}
+            onClick={() =>
+              trackEvent({
+                name: "cta_click",
+                path: typeof window !== "undefined" ? window.location.pathname : primaryHref,
+                label: primaryLabel,
+                location,
+                intent: "proposal",
+                attribution: readStoredAttribution(),
+              })
+            }
             className="group inline-flex items-center justify-center gap-2 border border-[var(--color-text)] px-6 py-4 text-xs font-medium uppercase tracking-[0.22em] transition-all duration-300 hover:bg-[var(--color-text)] hover:text-[var(--color-bg)]"
           >
             {primaryLabel}
@@ -55,6 +68,16 @@ export function ConversionPanel({
           </Link>
           <a
             href={secondaryHref}
+            onClick={() =>
+              trackEvent({
+                name: "capability_deck_download",
+                path: typeof window !== "undefined" ? window.location.pathname : secondaryHref,
+                label: secondaryLabel,
+                location,
+                intent: "capability-deck",
+                attribution: readStoredAttribution(),
+              })
+            }
             className="group inline-flex items-center justify-center gap-2 border border-[var(--color-border)] px-6 py-4 text-xs font-medium uppercase tracking-[0.22em] text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-accent)]/30 hover:text-[var(--color-text)]"
           >
             {secondaryLabel}

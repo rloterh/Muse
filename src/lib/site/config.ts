@@ -128,6 +128,14 @@ export const siteSettings: SiteSettings = {
       },
       notes:
         "Strong technical fit and an accelerated buying timeline. Needs a sharper content and systems recommendation before scoping.",
+      attribution: {
+        intent: "proposal",
+        referralSource: "Referral",
+        landingPath: "/services",
+        utmSource: "partner-network",
+        utmMedium: "referral",
+        utmCampaign: "spring-enterprise-intros",
+      },
     },
     {
       id: "inquiry-verdant",
@@ -148,6 +156,14 @@ export const siteSettings: SiteSettings = {
       },
       notes:
         "Clear appetite for positioning and identity work. Likely a strong workshop-led engagement with follow-on rollout.",
+      attribution: {
+        intent: "strategy",
+        referralSource: "Organic search",
+        landingPath: "/journal/what-content-teams-actually-need-from-a-case-study-cms",
+        utmSource: "google",
+        utmMedium: "organic",
+        utmCampaign: "brand-system-search",
+      },
     },
     {
       id: "inquiry-northern",
@@ -168,6 +184,14 @@ export const siteSettings: SiteSettings = {
       },
       notes:
         "Strong interest in a wow-factor experience, but the budget/timeline pairing suggests a phased recommendation rather than a full production engagement.",
+      attribution: {
+        intent: "capability-deck",
+        referralSource: "Conference",
+        landingPath: "/",
+        utmSource: "field-event",
+        utmMedium: "offline",
+        utmCampaign: "design-forward-summit",
+      },
     },
   ],
 };

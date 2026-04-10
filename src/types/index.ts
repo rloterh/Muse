@@ -153,6 +153,17 @@ export interface InquiryRouting {
   priority: InquiryPriority;
 }
 
+export interface InquiryAttribution {
+  intent?: string;
+  referralSource?: string;
+  landingPath?: string;
+  referrer?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmContent?: string;
+}
+
 export interface InquiryPreview {
   id: string;
   company: string;
@@ -165,6 +176,7 @@ export interface InquiryPreview {
   status: InquiryStatus;
   routing: InquiryRouting;
   notes: string;
+  attribution?: InquiryAttribution;
 }
 
 export interface SiteMetric {

@@ -1,4 +1,5 @@
 import type { InquiryRouting } from "@/types";
+import type { InquiryAttribution } from "@/types";
 
 interface EmailOptions {
   to: string;
@@ -67,6 +68,7 @@ export function contactEmailHtml(data: {
   message: string;
   consent?: boolean;
   routing: InquiryRouting;
+  attribution?: InquiryAttribution;
 }): string {
   const name = escapeHtml(data.name);
   const email = escapeHtml(data.email);
@@ -86,6 +88,16 @@ export function contactEmailHtml(data: {
     fit: escapeHtml(data.routing.fit),
     nextStep: escapeHtml(data.routing.nextStep),
     priority: escapeHtml(data.routing.priority),
+  };
+  const attribution = {
+    intent: data.attribution?.intent ? escapeHtml(data.attribution.intent) : "",
+    referralSource: data.attribution?.referralSource ? escapeHtml(data.attribution.referralSource) : "",
+    landingPath: data.attribution?.landingPath ? escapeHtml(data.attribution.landingPath) : "",
+    referrer: data.attribution?.referrer ? escapeHtml(data.attribution.referrer) : "",
+    utmSource: data.attribution?.utmSource ? escapeHtml(data.attribution.utmSource) : "",
+    utmMedium: data.attribution?.utmMedium ? escapeHtml(data.attribution.utmMedium) : "",
+    utmCampaign: data.attribution?.utmCampaign ? escapeHtml(data.attribution.utmCampaign) : "",
+    utmContent: data.attribution?.utmContent ? escapeHtml(data.attribution.utmContent) : "",
   };
 
   return `
@@ -183,6 +195,19 @@ export function contactEmailHtml(data: {
             : ""
         }
       </table>
+
+      <div style="margin-top: 24px; border-top: 1px solid #252525; padding-top: 20px;">
+        <p style="color: #8A8680; margin-bottom: 8px;">Attribution</p>
+        <p style="line-height: 1.8; color: #E8E4DE;">
+          Intent: ${attribution.intent || "n/a"}<br />
+          Referral source: ${attribution.referralSource || "n/a"}<br />
+          Landing path: ${attribution.landingPath || "n/a"}<br />
+          Referrer: ${attribution.referrer || "n/a"}<br />
+          UTM source / medium: ${attribution.utmSource || "n/a"} / ${attribution.utmMedium || "n/a"}<br />
+          UTM campaign: ${attribution.utmCampaign || "n/a"}<br />
+          UTM content: ${attribution.utmContent || "n/a"}
+        </p>
+      </div>
 
       ${
         goals

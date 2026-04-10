@@ -232,6 +232,7 @@ export function ServicesPageClient({ services }: ServicesPageClientProps) {
               primaryLabel="Request proposal"
               secondaryHref="/api/capability-deck"
               secondaryLabel="Download deck"
+              location="services"
             />
           </Reveal>
 

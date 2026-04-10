@@ -382,6 +382,7 @@ export function HomePageClient({ homepage, services }: HomePageClientProps) {
               description="The capability deck is built for internal sharing, while the inquiry flow captures enough context for a serious first response."
               primaryHref="/contact?intent=proposal"
               primaryLabel="Request proposal"
+              location="home"
             />
           </Reveal>
         </div>

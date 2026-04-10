@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Syne, Outfit } from "next/font/google";
 import { AuthViewerProvider } from "@/components/providers/auth-viewer-provider";
+import { AnalyticsProvider } from "@/components/providers/analytics-provider";
 import { PageTransition } from "@/components/providers/page-transition";
 import { SmoothScrollProvider } from "@/components/providers/smooth-scroll-provider";
 import { getServerAuthSnapshot } from "@/lib/auth/viewer";
@@ -42,6 +43,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body className="grain min-h-screen bg-[var(--color-bg)] font-body text-[var(--color-text)] antialiased">
         <AuthViewerProvider initialViewer={viewer}>
+          <AnalyticsProvider />
           <SmoothScrollProvider>
             <PageTransition>{children}</PageTransition>
           </SmoothScrollProvider>

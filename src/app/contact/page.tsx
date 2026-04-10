@@ -15,12 +15,28 @@ import {
   siteSettings,
   timelineOptions,
 } from "@/lib/site/config";
+import { readStoredAttribution, trackEvent } from "@/lib/analytics/events";
 import { cn } from "@/lib/utils/cn";
-import type { InquiryRouting } from "@/types";
+import type { InquiryAttribution, InquiryRouting } from "@/types";
 
 interface InquiryResponse {
   status: string;
   routing: InquiryRouting;
+}
+
+function mergeAttribution(
+  storedAttribution: InquiryAttribution,
+  searchParams: URLSearchParams
+): InquiryAttribution {
+  return {
+    ...storedAttribution,
+    intent: searchParams.get("intent") ?? storedAttribution.intent,
+    referralSource: searchParams.get("ref") ?? storedAttribution.referralSource,
+    utmSource: searchParams.get("utm_source") ?? storedAttribution.utmSource,
+    utmMedium: searchParams.get("utm_medium") ?? storedAttribution.utmMedium,
+    utmCampaign: searchParams.get("utm_campaign") ?? storedAttribution.utmCampaign,
+    utmContent: searchParams.get("utm_content") ?? storedAttribution.utmContent,
+  };
 }
 
 const initialForm = {
@@ -109,10 +125,17 @@ export default function ContactPage() {
     setSending(true);
 
     try {
+      const attribution = mergeAttribution(
+        readStoredAttribution(),
+        new URLSearchParams(searchParams.toString())
+      );
       const response = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          attribution,
+        }),
       });
 
       const data = await response.json();
@@ -124,6 +147,14 @@ export default function ContactPage() {
       }
 
       setInquiryResult(data.inquiry ?? null);
+      trackEvent({
+        name: "inquiry_submitted",
+        path: "/contact",
+        label: "inquiry-form",
+        location: "contact-page",
+        intent: attribution.intent ?? form.projectFocus,
+        attribution,
+      });
       setSent(true);
     } catch {
       setError("Network error. Please try again.");

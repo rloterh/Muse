@@ -23,6 +23,7 @@ export function Footer() {
             primaryHref="/contact?intent=proposal"
             primaryLabel="Request proposal"
             note="Senior-led engagements across strategy, design, product, and launch delivery"
+            location="footer"
           />
         </motion.div>
       </div>

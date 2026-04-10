@@ -59,6 +59,8 @@ export async function POST(request: Request) {
     const message = typeof body.message === "string" ? body.message.trim() : "";
     const consent = body.consent === true;
     const companyField = typeof body.companyField === "string" ? body.companyField.trim() : "";
+    const attribution =
+      body.attribution && typeof body.attribution === "object" ? body.attribution : {};
     const services = Array.isArray(body.services)
       ? body.services.filter(
           (service: unknown): service is string => typeof service === "string"
@@ -146,6 +148,7 @@ export async function POST(request: Request) {
       message,
       consent,
       routing,
+      attribution,
     });
 
     const sent = await sendEmail({
@@ -167,6 +170,7 @@ export async function POST(request: Request) {
       inquiry: {
         status,
         routing,
+        attribution,
       },
     });
   } catch (error) {
