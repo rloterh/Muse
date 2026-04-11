@@ -122,6 +122,12 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
   });
   const viewerOwnerId = useMemo(() => getViewerOwnerId(viewerName), [viewerName]);
   const ownerOptions = useMemo(() => inquiryOwners, []);
+  const hasActiveFilters =
+    search.trim().length > 0 ||
+    statusFilter !== "all" ||
+    ownerFilter !== "all" ||
+    followUpFilter ||
+    queueView !== "all";
 
   useEffect(() => {
     setItems(inquiries);
@@ -367,6 +373,36 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
               </button>
             ))}
           </div>
+
+          {hasActiveFilters ? (
+            <div className="mt-5 flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] pb-5">
+              <StatusBadge variant="accent">Active filters</StatusBadge>
+              {queueView !== "all" ? <StatusBadge>{queueView.replace("-", " ")}</StatusBadge> : null}
+              {statusFilter !== "all" ? <StatusBadge>{statusFilter}</StatusBadge> : null}
+              {ownerFilter !== "all" ? (
+                <StatusBadge>
+                  {ownerFilter === "unassigned"
+                    ? "Unassigned"
+                    : resolveInquiryOwnerName(ownerFilter, ownerFilter)}
+                </StatusBadge>
+              ) : null}
+              {followUpFilter ? <StatusBadge>Follow-up due</StatusBadge> : null}
+              {search.trim() ? <StatusBadge>{`Search: ${search.trim()}`}</StatusBadge> : null}
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch("");
+                  setStatusFilter("all");
+                  setOwnerFilter("all");
+                  setFollowUpFilter(false);
+                  setQueueView("all");
+                }}
+                className="ml-auto text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)] transition-colors hover:text-[var(--color-text)]"
+              >
+                Clear all
+              </button>
+            </div>
+          ) : null}
 
           <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,0.7fr))]">
             <label className="block">

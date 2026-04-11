@@ -4,6 +4,7 @@ import { InquiryOverview } from "@/components/admin/inquiry-overview";
 import { InquiryPipeline } from "@/components/admin/inquiry-pipeline";
 import { InviteUserCard } from "@/components/admin/invite-user-card";
 import { PipelineHealth } from "@/components/admin/pipeline-health";
+import { QueuePlaybooks } from "@/components/admin/queue-playbooks";
 import { Footer } from "@/components/layout/footer";
 import { Navigation } from "@/components/layout/navigation";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -146,6 +147,7 @@ export default async function AdminPage() {
 
           <InquiryOverview inquiries={inquiries} />
           <PipelineHealth inquiries={inquiries} />
+          <QueuePlaybooks inquiries={inquiries} viewerName={viewer.name} />
           <InquiryPipeline inquiries={inquiries} viewerName={viewer.name} />
           <ConversionReporting inquiries={inquiries} />
 
