@@ -1,3 +1,4 @@
+import { ActivityFeed } from "@/components/admin/activity-feed";
 import { ConversionReporting } from "@/components/admin/conversion-reporting";
 import { InquiryOverview } from "@/components/admin/inquiry-overview";
 import { InquiryPipeline } from "@/components/admin/inquiry-pipeline";
@@ -111,6 +112,7 @@ export default async function AdminPage() {
           </div>
 
           <ModerationWorkspace tasks={moderationTasks} />
+          <ActivityFeed inquiries={inquiries} moderationTasks={moderationTasks} />
           <InquiryOverview inquiries={inquiries} />
           <PipelineHealth inquiries={inquiries} />
           <QueuePlaybooks inquiries={inquiries} viewerName={viewer.name} />
