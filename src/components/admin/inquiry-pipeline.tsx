@@ -362,6 +362,15 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
     viewerName,
     viewerOwnerId,
   ]);
+  const viewerQueueCount = useMemo(
+    () =>
+      items.filter((inquiry) =>
+        viewerOwnerId
+          ? inquiry.assignedOwnerId === viewerOwnerId
+          : [inquiry.assignedTo, inquiry.routing.owner].some((value) => value === viewerName)
+      ).length,
+    [items, viewerName, viewerOwnerId]
+  );
 
   const queueViews = useMemo(
     () => [
@@ -373,11 +382,7 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
       {
         value: "mine" as const,
         label: "My queue",
-        count: items.filter((inquiry) =>
-          viewerOwnerId
-            ? inquiry.assignedOwnerId === viewerOwnerId
-            : [inquiry.assignedTo, inquiry.routing.owner].some((value) => value === viewerName)
-        ).length,
+        count: viewerQueueCount,
       },
       {
         value: "urgent" as const,
@@ -395,10 +400,34 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
         count: items.filter((inquiry) => inquiry.status === "Proposal drafted").length,
       },
     ],
-    [items, viewerName, viewerOwnerId]
+    [items, viewerQueueCount]
   );
   const savedQueuePresets = useMemo(() => {
+    const ownerFocusedPresets: SavedQueuePreset[] =
+      viewerQueueCount > 0
+        ? [
+            {
+              key: "my-urgent",
+              label: "My urgent",
+              description: "My highest-priority leads that need fast response and active triage.",
+              filters: { queueView: "mine", priority: "high" },
+            },
+            {
+              key: "my-proposals",
+              label: "My proposals",
+              description: "My proposal-stage opportunities that need commercial follow-through.",
+              filters: { queueView: "mine", status: "Proposal drafted" },
+            },
+            {
+              key: "my-pending-delivery",
+              label: "My pending delivery",
+              description: "My inquiries where the notification handoff still has not completed.",
+              filters: { queueView: "mine", delivery: "pending" },
+            },
+          ]
+        : [];
     const presets: SavedQueuePreset[] = [
+      ...ownerFocusedPresets,
       {
         key: "my-overdue",
         label: "My overdue",
@@ -495,6 +524,7 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
     search,
     statusFilter,
     viewerName,
+    viewerQueueCount,
     viewerOwnerId,
   ]);
 
@@ -607,7 +637,7 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
             ))}
           </div>
 
-          <div className="mt-5 grid gap-3 border-b border-[var(--color-border)] pb-5 md:grid-cols-2 xl:grid-cols-5">
+          <div className="mt-5 grid gap-3 border-b border-[var(--color-border)] pb-5 md:grid-cols-2 xl:grid-cols-4">
             {savedQueuePresets.map((preset) => (
               <button
                 key={preset.key}
