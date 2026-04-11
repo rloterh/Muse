@@ -1,4 +1,5 @@
 import type { InquiryPreview, ModerationTask, SiteSettings } from "@/types";
+import { inquiryOwners } from "@/lib/inquiries/owners";
 
 export const siteSettings: SiteSettings = {
   brandName: "Muse",
@@ -129,6 +130,7 @@ export const siteSettings: SiteSettings = {
       },
       notes:
         "Strong technical fit and an accelerated buying timeline. Needs a sharper content and systems recommendation before scoping.",
+      assignedOwnerId: "james-okafor",
       assignedTo: "James Okafor",
       nextTouchAt: "2026-04-15T09:00:00.000Z",
       attribution: {
@@ -178,6 +180,7 @@ export const siteSettings: SiteSettings = {
       },
       notes:
         "Clear appetite for positioning and identity work. Likely a strong workshop-led engagement with follow-on rollout.",
+      assignedOwnerId: "sofia-laurent",
       assignedTo: "Sofia Laurent",
       nextTouchAt: "2026-04-17T13:30:00.000Z",
       attribution: {
@@ -219,6 +222,7 @@ export const siteSettings: SiteSettings = {
       },
       notes:
         "Strong interest in a wow-factor experience, but the budget/timeline pairing suggests a phased recommendation rather than a full production engagement.",
+      assignedOwnerId: "kai-tanaka",
       assignedTo: "Kai Tanaka",
       nextTouchAt: "2026-04-19T16:00:00.000Z",
       attribution: {
@@ -276,12 +280,7 @@ export const serviceOptions = [
   "Product Design",
 ];
 
-export const inquiryOwnerOptions = [
-  "Sofia Laurent",
-  "James Okafor",
-  "Kai Tanaka",
-  "Amara Cole",
-];
+export const inquiryOwnerOptions = inquiryOwners.map((owner) => owner.name);
 
 export function moderationSummary(tasks: ModerationTask[]) {
   return {

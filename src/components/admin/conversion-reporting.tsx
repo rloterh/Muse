@@ -1,6 +1,7 @@
 "use client";
 
 import { BarChart3, Radar, TimerReset, Users2 } from "lucide-react";
+import { resolveInquiryOwnerName } from "@/lib/inquiries/owners";
 import { Reveal } from "@/components/ui/reveal";
 import type { InquiryPreview } from "@/types";
 
@@ -38,7 +39,13 @@ export function ConversionReporting({ inquiries }: ConversionReportingProps) {
     (left, right) => right[1] - left[1]
   );
   const ownerLoad = Object.entries(
-    countBy(inquiries.map((item) => item.assignedTo ?? item.routing.owner))
+    countBy(
+      inquiries.map(
+        (item) =>
+          resolveInquiryOwnerName(item.assignedOwnerId, item.assignedTo ?? item.routing.owner) ??
+          "Unassigned"
+      )
+    )
   ).sort((left, right) => right[1] - left[1]);
   const followUpDue = inquiries.filter((item) => isFollowUpDue(item.nextTouchAt)).length;
 

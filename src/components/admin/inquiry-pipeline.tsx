@@ -12,7 +12,11 @@ import {
   Sparkles,
   UserRound,
 } from "lucide-react";
-import { inquiryOwnerOptions } from "@/lib/site/config";
+import {
+  getViewerOwnerId,
+  inquiryOwners,
+  resolveInquiryOwnerName,
+} from "@/lib/inquiries/owners";
 import { Reveal } from "@/components/ui/reveal";
 import { StatusBadge } from "@/components/ui/status-badge";
 import type { InquiryPreview } from "@/types";
@@ -99,21 +103,8 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
   const [ownerFilter, setOwnerFilter] = useState<string>("all");
   const [followUpFilter, setFollowUpFilter] = useState(false);
   const [queueView, setQueueView] = useState<QueueView>("all");
-  const ownerOptions = useMemo(() => {
-    const values = new Set(inquiryOwnerOptions);
-
-    inquiries.forEach((inquiry) => {
-      if (inquiry.assignedTo?.trim()) {
-        values.add(inquiry.assignedTo.trim());
-      }
-
-      if (inquiry.routing.owner?.trim()) {
-        values.add(inquiry.routing.owner.trim());
-      }
-    });
-
-    return [...values];
-  }, [inquiries]);
+  const viewerOwnerId = useMemo(() => getViewerOwnerId(viewerName), [viewerName]);
+  const ownerOptions = useMemo(() => inquiryOwners, []);
 
   useEffect(() => {
     setItems(inquiries);
@@ -141,20 +132,23 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
       const matchesStatus = statusFilter === "all" || inquiry.status === statusFilter;
       const matchesOwner =
         ownerFilter === "all" ||
-        inquiry.assignedTo === ownerFilter ||
-        (!inquiry.assignedTo && inquiry.routing.owner === ownerFilter);
+        inquiry.assignedOwnerId === ownerFilter ||
+        (!inquiry.assignedOwnerId &&
+          resolveInquiryOwnerName(ownerFilter) === (inquiry.assignedTo ?? inquiry.routing.owner));
       const matchesFollowUp = !followUpFilter || isFollowUpDue(inquiry.nextTouchAt);
       const matchesQueueView =
         queueView === "all" ||
         (queueView === "mine" &&
-          [inquiry.assignedTo, inquiry.routing.owner].some((value) => value === viewerName)) ||
+          (viewerOwnerId
+            ? inquiry.assignedOwnerId === viewerOwnerId
+            : [inquiry.assignedTo, inquiry.routing.owner].some((value) => value === viewerName))) ||
         (queueView === "urgent" && inquiry.routing.priority === "high") ||
         (queueView === "follow-up" && isFollowUpDue(inquiry.nextTouchAt)) ||
         (queueView === "proposal" && inquiry.status === "Proposal drafted");
 
       return matchesSearch && matchesStatus && matchesOwner && matchesFollowUp && matchesQueueView;
     });
-  }, [followUpFilter, items, ownerFilter, queueView, search, statusFilter, viewerName]);
+  }, [followUpFilter, items, ownerFilter, queueView, search, statusFilter, viewerName, viewerOwnerId]);
 
   const queueViews = useMemo(
     () => [
@@ -167,7 +161,9 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
         value: "mine" as const,
         label: "My queue",
         count: items.filter((inquiry) =>
-          [inquiry.assignedTo, inquiry.routing.owner].some((value) => value === viewerName)
+          viewerOwnerId
+            ? inquiry.assignedOwnerId === viewerOwnerId
+            : [inquiry.assignedTo, inquiry.routing.owner].some((value) => value === viewerName)
         ).length,
       },
       {
@@ -186,7 +182,7 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
         count: items.filter((inquiry) => inquiry.status === "Proposal drafted").length,
       },
     ],
-    [items, viewerName]
+    [items, viewerName, viewerOwnerId]
   );
 
   function updateInquiry(id: string, updates: Partial<InquiryPreview>) {
@@ -212,7 +208,7 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
         body: JSON.stringify({
           status: inquiry.status,
           notes: inquiry.notes,
-          assignedTo: inquiry.assignedTo,
+          assignedOwnerId: inquiry.assignedOwnerId,
           nextTouchAt: inquiry.nextTouchAt ?? null,
         }),
       });
@@ -288,69 +284,69 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
           </div>
 
           <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,0.7fr))]">
-          <label className="block">
-            <span className="text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
-              Search
-            </span>
-            <span className="mt-3 flex items-center gap-3 border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3">
-              <Search className="h-4 w-4 text-[var(--color-text-dim)]" />
+            <label className="block">
+              <span className="text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+                Search
+              </span>
+              <span className="mt-3 flex items-center gap-3 border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3">
+                <Search className="h-4 w-4 text-[var(--color-text-dim)]" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Company, contact, owner, or service"
+                  className="w-full bg-transparent text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-dim)] focus:outline-none"
+                />
+              </span>
+            </label>
+
+            <label className="block">
+              <span className="text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+                Status
+              </span>
+              <select
+                value={statusFilter}
+                onChange={(event) =>
+                  setStatusFilter(event.target.value as InquiryPreview["status"] | "all")
+                }
+                className="mt-3 w-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none"
+              >
+                <option value="all">All statuses</option>
+                {statusOptions.map((status) => (
+                  <option key={status} value={status} className="bg-[var(--color-bg)]">
+                    {status}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+                Owner
+              </span>
+              <select
+                value={ownerFilter}
+                onChange={(event) => setOwnerFilter(event.target.value)}
+                className="mt-3 w-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none"
+              >
+                <option value="all">All owners</option>
+                {ownerOptions.map((owner) => (
+                  <option key={owner.id} value={owner.id} className="bg-[var(--color-bg)]">
+                    {owner.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="flex items-center gap-3 border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 lg:mt-[1.55rem]">
               <input
-                type="text"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Company, contact, owner, or service"
-                className="w-full bg-transparent text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-dim)] focus:outline-none"
+                type="checkbox"
+                checked={followUpFilter}
+                onChange={(event) => setFollowUpFilter(event.target.checked)}
+                className="h-4 w-4 accent-[var(--color-accent)]"
               />
-            </span>
-          </label>
-
-          <label className="block">
-            <span className="text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
-              Status
-            </span>
-            <select
-              value={statusFilter}
-              onChange={(event) =>
-                setStatusFilter(event.target.value as InquiryPreview["status"] | "all")
-              }
-              className="mt-3 w-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none"
-            >
-              <option value="all">All statuses</option>
-              {statusOptions.map((status) => (
-                <option key={status} value={status} className="bg-[var(--color-bg)]">
-                  {status}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block">
-            <span className="text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
-              Owner
-            </span>
-            <select
-              value={ownerFilter}
-              onChange={(event) => setOwnerFilter(event.target.value)}
-              className="mt-3 w-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none"
-            >
-              <option value="all">All owners</option>
-              {ownerOptions.map((owner) => (
-                <option key={owner} value={owner} className="bg-[var(--color-bg)]">
-                  {owner}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex items-center gap-3 border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 lg:mt-[1.55rem]">
-            <input
-              type="checkbox"
-              checked={followUpFilter}
-              onChange={(event) => setFollowUpFilter(event.target.checked)}
-              className="h-4 w-4 accent-[var(--color-accent)]"
-            />
-            <span className="text-sm text-[var(--color-text-muted)]">Follow-up due only</span>
-          </label>
+              <span className="text-sm text-[var(--color-text-muted)]">Follow-up due only</span>
+            </label>
           </div>
         </div>
       </Reveal>
@@ -457,18 +453,19 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
                         Owner
                       </div>
                       <select
-                        value={inquiry.assignedTo ?? ""}
+                        value={inquiry.assignedOwnerId ?? ""}
                         onChange={(event) =>
                           updateInquiry(inquiry.id, {
-                            assignedTo: event.target.value,
+                            assignedOwnerId: event.target.value,
+                            assignedTo: resolveInquiryOwnerName(event.target.value, inquiry.assignedTo),
                           })
                         }
                         className="mt-3 w-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none"
                       >
                         <option value="">Select owner</option>
                         {ownerOptions.map((owner) => (
-                          <option key={owner} value={owner} className="bg-[var(--color-bg)]">
-                            {owner}
+                          <option key={owner.id} value={owner.id} className="bg-[var(--color-bg)]">
+                            {owner.name}
                           </option>
                         ))}
                       </select>

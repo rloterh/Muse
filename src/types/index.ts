@@ -173,6 +173,12 @@ export interface InquiryActivityEntry {
   createdAt: string;
 }
 
+export interface InquiryOwner {
+  id: string;
+  name: string;
+  title: string;
+}
+
 export interface InquiryPreview {
   id: string;
   company: string;
@@ -193,6 +199,7 @@ export interface InquiryPreview {
   goals?: string;
   message?: string;
   notificationDelivered?: boolean;
+  assignedOwnerId?: string;
   assignedTo?: string;
   nextTouchAt?: string;
   history?: InquiryActivityEntry[];

@@ -125,15 +125,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid website URL." }, { status: 400 });
     }
 
-    const { routing, status, source, notes, assignedTo, nextTouchAt, history } =
+    const {
+      routing,
+      status,
+      source,
+      notes,
+      assignedOwnerId,
+      assignedTo,
+      nextTouchAt,
+      history,
+    } =
       buildInquiryRecordDefaults({
-      budget,
-      timeline,
-      services,
-      projectFocus,
-      referralSource,
-      message,
-      attribution,
+        budget,
+        timeline,
+        services,
+        projectFocus,
+        referralSource,
+        message,
+        attribution,
       });
 
     const recipientEmail = process.env.CONTACT_EMAIL ?? "hello@muse.agency";
@@ -179,6 +188,7 @@ export async function POST(request: Request) {
           notes,
           attribution,
           notificationDelivered: false,
+          assignedOwnerId,
           assignedTo,
           nextTouchAt,
           history,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildViewerSession } from "@/lib/auth/viewer";
 import { canAccessViewerRole } from "@/lib/auth/roles";
+import { resolveInquiryOwnerName } from "@/lib/inquiries/owners";
 import { isInquiryStatus, updateInquiryLifecycle } from "@/lib/inquiries/repository";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { copySupabaseCookies, createRequestSupabaseClient } from "@/lib/supabase/server";
@@ -43,7 +44,8 @@ export async function PATCH(
     const body = await request.json();
     const nextStatus = body.status;
     const notes = typeof body.notes === "string" ? body.notes.trim() : undefined;
-    const assignedTo = typeof body.assignedTo === "string" ? body.assignedTo.trim() : undefined;
+    const assignedOwnerId =
+      typeof body.assignedOwnerId === "string" ? body.assignedOwnerId.trim() : undefined;
     const nextTouchAt =
       typeof body.nextTouchAt === "string" ? body.nextTouchAt.trim() || null : undefined;
     const { id } = await params;
@@ -69,10 +71,10 @@ export async function PATCH(
       );
     }
 
-    if (assignedTo && assignedTo.length > 120) {
+    if (assignedOwnerId && !resolveInquiryOwnerName(assignedOwnerId)) {
       return copySupabaseCookies(
         response,
-        NextResponse.json({ error: "Owner names must be 120 characters or fewer." }, { status: 400 })
+        NextResponse.json({ error: "Invalid owner selection." }, { status: 400 })
       );
     }
 
@@ -86,7 +88,7 @@ export async function PATCH(
     if (
       !nextStatus &&
       typeof notes !== "string" &&
-      typeof assignedTo !== "string" &&
+      typeof assignedOwnerId !== "string" &&
       nextTouchAt === undefined
     ) {
       return copySupabaseCookies(
@@ -98,7 +100,8 @@ export async function PATCH(
     const inquiry = await updateInquiryLifecycle(id, {
       status: nextStatus,
       notes,
-      assignedTo,
+      assignedOwnerId,
+      assignedTo: resolveInquiryOwnerName(assignedOwnerId),
       nextTouchAt,
       actorName: viewer.name,
     });

@@ -3,6 +3,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { siteSettings } from "@/lib/site/config";
 import { inferInquiryStatus, qualifyInquiry } from "@/lib/inquiries/qualification";
+import { resolveInquiryOwnerId, resolveInquiryOwnerName } from "@/lib/inquiries/owners";
 import type {
   InquiryActivityEntry,
   InquiryAttribution,
@@ -39,6 +40,7 @@ interface InquiryRow {
   notes: string | null;
   attribution: InquiryAttribution | null;
   notification_delivered: boolean;
+  assigned_to_id: string | null;
   assigned_to_name: string | null;
   next_touch_at: string | null;
   history: InquiryActivityEntry[] | null;
@@ -71,6 +73,7 @@ interface CreateInquiryInput {
   notes: string;
   attribution: InquiryAttribution;
   notificationDelivered: boolean;
+  assignedOwnerId?: string;
   assignedTo?: string;
   nextTouchAt?: string;
   history: InquiryActivityEntry[];
@@ -79,13 +82,14 @@ interface CreateInquiryInput {
 interface UpdateInquiryLifecycleInput {
   status?: InquiryStatus;
   notes?: string;
+  assignedOwnerId?: string;
   assignedTo?: string;
   nextTouchAt?: string | null;
   actorName: string;
 }
 
 const inquirySelect =
-  "id,name,email,company,website,region,budget,timeline,project_focus,referral_source,services,goals,message,consent,source,status,routing,notes,attribution,notification_delivered,assigned_to_name,next_touch_at,history,created_at,updated_at";
+  "id,name,email,company,website,region,budget,timeline,project_focus,referral_source,services,goals,message,consent,source,status,routing,notes,attribution,notification_delivered,assigned_to_id,assigned_to_name,next_touch_at,history,created_at,updated_at";
 
 function isRouting(value: unknown): value is InquiryRouting {
   if (!value || typeof value !== "object") {
@@ -220,7 +224,8 @@ function toInquiryPreview(row: InquiryRow): InquiryPreview {
     goals: row.goals ?? undefined,
     message: row.message ?? undefined,
     notificationDelivered: row.notification_delivered,
-    assignedTo: row.assigned_to_name ?? routing.owner,
+    assignedOwnerId: resolveInquiryOwnerId(row.assigned_to_id, row.assigned_to_name ?? routing.owner),
+    assignedTo: resolveInquiryOwnerName(row.assigned_to_id, row.assigned_to_name ?? routing.owner),
     nextTouchAt: row.next_touch_at ?? undefined,
     history: normalizeHistory(row.history),
     createdAt: row.created_at,
@@ -291,7 +296,13 @@ export async function createInquiryRecord(input: CreateInquiryInput) {
       notes: input.notes || null,
       attribution: input.attribution,
       notification_delivered: input.notificationDelivered,
-      assigned_to_name: input.assignedTo || input.routing.owner,
+      assigned_to_id:
+        input.assignedOwnerId ??
+        resolveInquiryOwnerId(undefined, input.assignedTo || input.routing.owner) ??
+        null,
+      assigned_to_name:
+        resolveInquiryOwnerName(input.assignedOwnerId, input.assignedTo || input.routing.owner) ||
+        input.routing.owner,
       next_touch_at: input.nextTouchAt || null,
       history: input.history,
     })
@@ -351,6 +362,14 @@ export async function updateInquiryLifecycle(
     updates.assigned_to_name = input.assignedTo.trim() || null;
   }
 
+  if (typeof input.assignedOwnerId === "string") {
+    updates.assigned_to_id = input.assignedOwnerId || null;
+    updates.assigned_to_name =
+      resolveInquiryOwnerName(input.assignedOwnerId, input.assignedTo || current.assigned_to_name) ||
+      current.assigned_to_name ||
+      null;
+  }
+
   if (input.nextTouchAt !== undefined) {
     updates.next_touch_at = input.nextTouchAt || null;
   }
@@ -367,15 +386,18 @@ export async function updateInquiryLifecycle(
   }
 
   if (
-    typeof input.assignedTo === "string" &&
-    input.assignedTo.trim() &&
-    input.assignedTo.trim() !== current.assigned_to_name
+    typeof input.assignedOwnerId === "string" &&
+    input.assignedOwnerId &&
+    input.assignedOwnerId !== current.assigned_to_id
   ) {
+    const nextOwnerName =
+      resolveInquiryOwnerName(input.assignedOwnerId, input.assignedTo || current.assigned_to_name) ||
+      "Unassigned owner";
     history.unshift(
       createActivityEntry(
         "assignment",
         "Owner reassigned",
-        `Inquiry reassigned to ${input.assignedTo.trim()}.`,
+        `Inquiry reassigned to ${nextOwnerName}.`,
         input.actorName
       )
     );
@@ -441,6 +463,7 @@ export function buildInquiryRecordDefaults(input: {
     routing,
     status: inferInquiryStatus(routing.priority),
     source: input.referralSource || input.attribution.referralSource || "Direct",
+    assignedOwnerId: resolveInquiryOwnerId(undefined, routing.owner),
     assignedTo: routing.owner,
     nextTouchAt: getDefaultNextTouchAt(routing.priority),
     history: [
