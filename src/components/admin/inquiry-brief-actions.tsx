@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowUpRight, CheckCheck, LoaderCircle } from "lucide-react";
+import { readStoredAttribution, trackEvent } from "@/lib/analytics/events";
 
 interface InquiryBriefActionsProps {
   inquiryId: string;
@@ -37,6 +38,15 @@ export function InquiryBriefActions({
           setError(data.error ?? "Unable to log the review touch right now.");
           return;
         }
+
+        trackEvent({
+          name: "brief_reviewed",
+          path: `/admin/inquiries/${inquiryId}`,
+          label: destination ? "mark-reviewed-and-continue" : "mark-reviewed",
+          location: "admin-inquiry-brief",
+          intent: destination ? "queue-continue" : "review-touch",
+          attribution: readStoredAttribution(),
+        });
 
         if (destination) {
           router.push(destination);
@@ -76,7 +86,17 @@ export function InquiryBriefActions({
         <button
           type="button"
           disabled={isPending}
-          onClick={() => router.push(nextInquiryHref ?? queueHref)}
+          onClick={() => {
+            trackEvent({
+              name: "cta_click",
+              path: `/admin/inquiries/${inquiryId}`,
+              label: nextInquiryHref ? "skip-to-next-brief" : "return-to-queue",
+              location: "admin-inquiry-brief",
+              intent: nextInquiryHref ? "queue-continue" : "queue-return",
+              attribution: readStoredAttribution(),
+            });
+            router.push(nextInquiryHref ?? queueHref);
+          }}
           className="inline-flex items-center justify-center gap-2 border border-[var(--color-border)] px-4 py-3 text-xs uppercase tracking-[0.18em] text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-text-dim)] hover:text-[var(--color-text)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {nextInquiryHref ? "Skip to next brief" : "Return to queue"}

@@ -8,7 +8,16 @@ type AnalyticsEventName =
   | "page_view"
   | "cta_click"
   | "capability_deck_download"
-  | "inquiry_submitted";
+  | "discovery_call_click"
+  | "proposal_mode_viewed"
+  | "inquiry_submitted"
+  | "inquiry_reset"
+  | "brief_reviewed";
+
+type AnalyticsEventMetadata = Record<
+  string,
+  string | number | boolean | null | undefined
+>;
 
 interface AnalyticsEventPayload {
   name: AnalyticsEventName;
@@ -17,6 +26,7 @@ interface AnalyticsEventPayload {
   location?: string;
   intent?: string;
   attribution?: InquiryAttribution;
+  metadata?: AnalyticsEventMetadata;
 }
 
 declare global {
@@ -73,6 +83,7 @@ export function trackEvent(payload: AnalyticsEventPayload) {
     location: payload.location,
     intent: payload.intent,
     attribution: payload.attribution,
+    metadata: payload.metadata,
     timestamp: new Date().toISOString(),
   };
 

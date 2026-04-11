@@ -232,6 +232,7 @@ export interface SiteSettings {
   brandTagline: string;
   contactEmail: string;
   contactPhone: string;
+  discoveryCallHref: string;
   offices: string[];
   socials: { label: string; href: string }[];
   navLinks: { label: string; href: string; num: string }[];

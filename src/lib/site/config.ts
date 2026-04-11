@@ -6,6 +6,7 @@ export const siteSettings: SiteSettings = {
   brandTagline: "Creative systems for ambitious brands.",
   contactEmail: "hello@muse.agency",
   contactPhone: "+1 (555) 123-4567",
+  discoveryCallHref: "https://cal.com/muse/discovery",
   offices: ["Brooklyn, New York", "London, United Kingdom"],
   socials: [
     { label: "Instagram", href: "https://instagram.com" },

@@ -1,8 +1,15 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, ArrowUpRight, CheckCircle2, Radar, Send } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowUpRight,
+  CalendarClock,
+  CheckCircle2,
+  Download,
+  Radar,
+  Send,
+} from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Footer } from "@/components/layout/footer";
 import { Navigation } from "@/components/layout/navigation";
@@ -96,6 +103,24 @@ export default function ContactPage() {
             : prev.goals,
         services: nextServices,
       };
+    });
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (searchParams.get("intent") !== "proposal") {
+      return;
+    }
+
+    trackEvent({
+      name: "proposal_mode_viewed",
+      path: "/contact",
+      label: "proposal-mode",
+      location: "contact-page",
+      intent: "proposal",
+      attribution: mergeAttribution(
+        readStoredAttribution(),
+        new URLSearchParams(searchParams.toString())
+      ),
     });
   }, [searchParams]);
 
@@ -249,9 +274,56 @@ export default function ContactPage() {
                       </div>
                     )}
 
+                    <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                      <a
+                        href={siteSettings.discoveryCallHref}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={() =>
+                          trackEvent({
+                            name: "discovery_call_click",
+                            path: "/contact",
+                            label: "success-book-discovery",
+                            location: "contact-success",
+                            intent: "discovery-call",
+                            attribution: readStoredAttribution(),
+                          })
+                        }
+                        className="inline-flex items-center justify-center gap-2 border border-[var(--color-text)] px-6 py-4 text-xs font-medium uppercase tracking-[0.22em] transition-all hover:bg-[var(--color-text)] hover:text-[var(--color-bg)]"
+                      >
+                        Book discovery call
+                        <CalendarClock className="h-4 w-4" />
+                      </a>
+                      <a
+                        href="/api/capability-deck"
+                        onClick={() =>
+                          trackEvent({
+                            name: "capability_deck_download",
+                            path: "/contact",
+                            label: "success-download-deck",
+                            location: "contact-success",
+                            intent: "capability-deck",
+                            attribution: readStoredAttribution(),
+                          })
+                        }
+                        className="inline-flex items-center justify-center gap-2 border border-[var(--color-border)] px-6 py-4 text-xs font-medium uppercase tracking-[0.22em] text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-accent)]/30 hover:text-[var(--color-text)]"
+                      >
+                        Download deck
+                        <Download className="h-4 w-4 text-[var(--color-accent)]" />
+                      </a>
+                    </div>
+
                     <button
                       type="button"
                       onClick={() => {
+                        trackEvent({
+                          name: "inquiry_reset",
+                          path: "/contact",
+                          label: "start-another-inquiry",
+                          location: "contact-success",
+                          intent: inquiryResult?.routing.fit ?? form.projectFocus,
+                          attribution: readStoredAttribution(),
+                        });
                         setSent(false);
                         setInquiryResult(null);
                         setForm(initialForm);
@@ -587,6 +659,54 @@ export default function ContactPage() {
                   <p className="mt-3 text-sm leading-relaxed text-[var(--color-text-dim)]">
                     {siteSettings.offices.join(" | ")}
                   </p>
+                </div>
+
+                <div className="border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6">
+                  <p className="text-xs font-medium uppercase tracking-[0.3em] text-[var(--color-text-dim)]">
+                    Prefer to align live?
+                  </p>
+                  <p className="mt-4 text-sm leading-relaxed text-[var(--color-text-muted)]">
+                    If the brief is already mature, book a discovery call and we&apos;ll use the
+                    intake context to make that first session more concrete.
+                  </p>
+                  <div className="mt-5 flex flex-col gap-3">
+                    <a
+                      href={siteSettings.discoveryCallHref}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={() =>
+                        trackEvent({
+                          name: "discovery_call_click",
+                          path: "/contact",
+                          label: "sidebar-book-discovery",
+                          location: "contact-sidebar",
+                          intent: "discovery-call",
+                          attribution: readStoredAttribution(),
+                        })
+                      }
+                      className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-[var(--color-text)] transition-colors hover:text-[var(--color-accent)]"
+                    >
+                      Book discovery call
+                      <CalendarClock className="h-4 w-4 text-[var(--color-accent)]" />
+                    </a>
+                    <a
+                      href="/api/capability-deck"
+                      onClick={() =>
+                        trackEvent({
+                          name: "capability_deck_download",
+                          path: "/contact",
+                          label: "sidebar-download-deck",
+                          location: "contact-sidebar",
+                          intent: "capability-deck",
+                          attribution: readStoredAttribution(),
+                        })
+                      }
+                      className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-accent)]"
+                    >
+                      Download capability deck
+                      <Download className="h-4 w-4 text-[var(--color-accent)]" />
+                    </a>
+                  </div>
                 </div>
 
                 <div className="border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6">
