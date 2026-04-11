@@ -33,6 +33,22 @@ function isFollowUpDue(nextTouchAt?: string) {
   return !Number.isNaN(timestamp) && timestamp <= Date.now();
 }
 
+function isFollowUpDueSoon(nextTouchAt?: string, windowDays = 2) {
+  if (!nextTouchAt) {
+    return false;
+  }
+
+  const timestamp = new Date(nextTouchAt).getTime();
+
+  if (Number.isNaN(timestamp)) {
+    return false;
+  }
+
+  const now = Date.now();
+  const windowMs = windowDays * 24 * 60 * 60 * 1000;
+  return timestamp > now && timestamp <= now + windowMs;
+}
+
 function ageInDays(value?: string) {
   if (!value) {
     return null;
@@ -60,7 +76,56 @@ function topRows(summary: Record<string, number>, limit = 4) {
     }));
 }
 
+function buildAgeBuckets(inquiries: InquiryPreview[]) {
+  return [
+    {
+      label: "Fresh",
+      range: "0-2d",
+      count: inquiries.filter((inquiry) => {
+        const age = ageInDays(inquiry.updatedAt ?? inquiry.createdAt);
+        return age !== null && age <= 2;
+      }).length,
+      href: "/admin",
+    },
+    {
+      label: "Warming",
+      range: "3-5d",
+      count: inquiries.filter((inquiry) => {
+        const age = ageInDays(inquiry.updatedAt ?? inquiry.createdAt);
+        return age !== null && age >= 3 && age <= 5;
+      }).length,
+      href: "/admin?status=Qualified",
+    },
+    {
+      label: "Watchlist",
+      range: "6-9d",
+      count: inquiries.filter((inquiry) => {
+        const age = ageInDays(inquiry.updatedAt ?? inquiry.createdAt);
+        return age !== null && age >= 6 && age <= 9;
+      }).length,
+      href: "/admin?followUp=1",
+    },
+    {
+      label: "Critical",
+      range: "10d+",
+      count: inquiries.filter((inquiry) => {
+        const age = ageInDays(inquiry.updatedAt ?? inquiry.createdAt);
+        return age !== null && age >= 10;
+      }).length,
+      href: "/admin?followUp=1",
+    },
+  ];
+}
+
 export function PipelineHealth({ inquiries }: PipelineHealthProps) {
+  const unassignedCount = inquiries.filter((inquiry) => !inquiry.assignedOwnerId).length;
+  const deliveryPendingCount = inquiries.filter(
+    (inquiry) => inquiry.notificationDelivered === false
+  ).length;
+  const followUpDueCount = inquiries.filter((inquiry) => isFollowUpDue(inquiry.nextTouchAt)).length;
+  const followUpDueSoonCount = inquiries.filter((inquiry) =>
+    isFollowUpDueSoon(inquiry.nextTouchAt)
+  ).length;
   const attentionNeeded = inquiries.filter(
     (inquiry) =>
       !inquiry.assignedOwnerId ||
@@ -81,13 +146,44 @@ export function PipelineHealth({ inquiries }: PipelineHealthProps) {
     5
   );
   const regionalMix = topRows(countBy(inquiries.map((inquiry) => inquiry.region).filter(Boolean)), 5);
+  const ageBuckets = buildAgeBuckets(inquiries);
+  const responseWindows = [
+    {
+      label: "Overdue follow-up",
+      count: followUpDueCount,
+      href: "/admin?followUp=1",
+      tone: "warning" as const,
+      note: "Past-due next-touch commitments that need immediate action.",
+    },
+    {
+      label: "Due within 48h",
+      count: followUpDueSoonCount,
+      href: "/admin?view=follow-up",
+      tone: "accent" as const,
+      note: "Upcoming follow-ups that should be prepared before they slip.",
+    },
+    {
+      label: "Unassigned",
+      count: unassignedCount,
+      href: "/admin?owner=unassigned",
+      tone: "neutral" as const,
+      note: "Leads that still need explicit ownership in the queue.",
+    },
+    {
+      label: "Delivery pending",
+      count: deliveryPendingCount,
+      href: "/admin?status=New",
+      tone: "warning" as const,
+      note: "Inquiries whose downstream notification workflow did not complete.",
+    },
+  ];
   const actionCards = [
     attentionNeeded > 0
       ? {
           label: "Review at-risk inquiries",
           description:
             "Start with overdue follow-ups and notification misses so nothing valuable slips out of view.",
-          href: "/admin?followUp=1",
+          href: unassignedCount > 0 ? "/admin?status=New&owner=unassigned" : "/admin?followUp=1",
           badge: `${attentionNeeded} attention item${attentionNeeded === 1 ? "" : "s"}`,
         }
       : null,
@@ -228,7 +324,7 @@ export function PipelineHealth({ inquiries }: PipelineHealthProps) {
                     <div className="flex items-center justify-between gap-4 text-sm">
                       <p className="text-[var(--color-text)]">{item.label}</p>
                       <p className="text-[var(--color-text-muted)]">
-                        {item.count} inquiries · {item.share}%
+                        {item.count} inquiries | {item.share}%
                       </p>
                     </div>
                     <div className="mt-2 h-2 bg-[var(--color-bg)]">
@@ -281,6 +377,87 @@ export function PipelineHealth({ inquiries }: PipelineHealthProps) {
                   regions.
                 </p>
               )}
+            </div>
+          </div>
+        </Reveal>
+      </div>
+
+      <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+        <Reveal>
+          <div className="border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                  Response windows
+                </p>
+                <h3 className="mt-3 font-display text-2xl font-bold tracking-tight">
+                  SLA-style pressure points in the queue
+                </h3>
+              </div>
+              <StatusBadge variant="accent">Response ops</StatusBadge>
+            </div>
+
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              {responseWindows.map((window) => (
+                <Link
+                  key={window.label}
+                  href={window.href}
+                  className="group border border-[var(--color-border)] bg-[var(--color-bg)] p-4 transition-colors hover:border-[var(--color-accent)]/40"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <StatusBadge variant={window.tone}>{window.label}</StatusBadge>
+                    <ArrowUpRight className="h-4 w-4 text-[var(--color-accent)] transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                  </div>
+                  <p className="mt-4 font-display text-3xl font-bold tracking-tight text-[var(--color-text)]">
+                    {window.count}
+                  </p>
+                  <p className="mt-2 text-sm leading-relaxed text-[var(--color-text-muted)]">
+                    {window.note}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </Reveal>
+
+        <Reveal delay={0.08}>
+          <div className="border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                  Stage aging
+                </p>
+                <h3 className="mt-3 font-display text-2xl font-bold tracking-tight">
+                  How long work is sitting in the pipeline
+                </h3>
+              </div>
+              <StatusBadge>Velocity</StatusBadge>
+            </div>
+
+            <div className="mt-6 space-y-4">
+              {ageBuckets.map((bucket) => (
+                <Link
+                  key={bucket.label}
+                  href={bucket.href}
+                  className="group flex items-center justify-between gap-4 border-t border-[var(--color-border)] pt-4 first:border-t-0 first:pt-0"
+                >
+                  <div>
+                    <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+                      {bucket.label}
+                      <span className="text-[var(--color-accent)]">{bucket.range}</span>
+                    </div>
+                    <p className="mt-2 text-sm text-[var(--color-text-muted)]">
+                      Updated or created within this age band.
+                    </p>
+                  </div>
+                  <div className="inline-flex items-center gap-3">
+                    <p className="font-display text-3xl font-bold tracking-tight text-[var(--color-text)]">
+                      {bucket.count}
+                    </p>
+                    <ArrowUpRight className="h-4 w-4 text-[var(--color-accent)] transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                  </div>
+                </Link>
+              ))}
             </div>
           </div>
         </Reveal>

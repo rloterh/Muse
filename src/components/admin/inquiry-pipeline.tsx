@@ -215,8 +215,10 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
       const matchesStatus = statusFilter === "all" || inquiry.status === statusFilter;
       const matchesOwner =
         ownerFilter === "all" ||
+        (ownerFilter === "unassigned" && !inquiry.assignedOwnerId) ||
         inquiry.assignedOwnerId === ownerFilter ||
         (!inquiry.assignedOwnerId &&
+          ownerFilter !== "unassigned" &&
           resolveInquiryOwnerName(ownerFilter) === (inquiry.assignedTo ?? inquiry.routing.owner));
       const matchesFollowUp = !followUpFilter || isFollowUpDue(inquiry.nextTouchAt);
       const matchesQueueView =
@@ -413,6 +415,7 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
                 className="mt-3 w-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none"
               >
                 <option value="all">All owners</option>
+                <option value="unassigned">Unassigned</option>
                 {ownerOptions.map((owner) => (
                   <option key={owner.id} value={owner.id} className="bg-[var(--color-bg)]">
                     {owner.name}
