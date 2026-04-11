@@ -48,6 +48,7 @@ export async function PATCH(
       typeof body.assignedOwnerId === "string" ? body.assignedOwnerId.trim() : undefined;
     const nextTouchAt =
       typeof body.nextTouchAt === "string" ? body.nextTouchAt.trim() || null : undefined;
+    const logReviewTouch = body.logReviewTouch === true;
     const { id } = await params;
 
     if (!id) {
@@ -89,7 +90,8 @@ export async function PATCH(
       !nextStatus &&
       typeof notes !== "string" &&
       typeof assignedOwnerId !== "string" &&
-      nextTouchAt === undefined
+      nextTouchAt === undefined &&
+      !logReviewTouch
     ) {
       return copySupabaseCookies(
         response,
@@ -103,6 +105,7 @@ export async function PATCH(
       assignedOwnerId,
       assignedTo: resolveInquiryOwnerName(assignedOwnerId),
       nextTouchAt,
+      logReviewTouch,
       actorName: viewer.name,
     });
 

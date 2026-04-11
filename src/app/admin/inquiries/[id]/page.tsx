@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowUpRight, CalendarClock, Mail, MapPin, Radar, UserRound } from "lucide-react";
 import { Footer } from "@/components/layout/footer";
 import { Navigation } from "@/components/layout/navigation";
+import { InquiryBriefActions } from "@/components/admin/inquiry-brief-actions";
 import { Reveal } from "@/components/ui/reveal";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { requireViewerRole } from "@/lib/auth/viewer";
@@ -421,12 +422,18 @@ export default async function AdminInquiryPage({
                         Open next inquiry
                         <ArrowUpRight className="h-4 w-4" />
                       </Link>
+                      <InquiryBriefActions
+                        inquiryId={inquiry.id}
+                        queueHref={queueHref}
+                        nextInquiryHref={nextInquiryHref}
+                      />
                     </div>
                   ) : (
                     <div className="mt-5">
                       <p className="text-sm leading-relaxed text-[var(--color-text-muted)]">
                         This inquiry is the last item in the current working order. Return to the queue to choose a new focus.
                       </p>
+                      <InquiryBriefActions inquiryId={inquiry.id} queueHref={queueHref} />
                     </div>
                   )}
                 </div>

@@ -85,6 +85,7 @@ interface UpdateInquiryLifecycleInput {
   assignedOwnerId?: string;
   assignedTo?: string;
   nextTouchAt?: string | null;
+  logReviewTouch?: boolean;
   actorName: string;
 }
 
@@ -372,6 +373,17 @@ export async function updateInquiryLifecycle(
 
   if (input.nextTouchAt !== undefined) {
     updates.next_touch_at = input.nextTouchAt || null;
+  }
+
+  if (input.logReviewTouch) {
+    history.unshift(
+      createActivityEntry(
+        "system",
+        "Brief reviewed",
+        "Inquiry brief reviewed from the admin workflow rail.",
+        input.actorName
+      )
+    );
   }
 
   if (input.status && input.status !== current.status) {
