@@ -43,6 +43,10 @@ type SavedQueuePreset = {
     followUp?: boolean;
   };
 };
+type ResolvedSavedQueuePreset = SavedQueuePreset & {
+  count: number;
+  active: boolean;
+};
 
 const statusOptions = [
   "New",
@@ -52,6 +56,13 @@ const statusOptions = [
 ] as const satisfies InquiryPreview["status"][];
 const fitOptions = ["Strategic", "Build-ready", "Nurture"] as const satisfies InquiryPreview["routing"]["fit"][];
 const priorityOptions = ["high", "medium", "low"] as const satisfies InquiryPreview["routing"]["priority"][];
+const queueViewLabels: Record<QueueView, string> = {
+  all: "All inquiries",
+  mine: "My queue",
+  urgent: "Urgent queue",
+  "follow-up": "Follow-up queue",
+  proposal: "Proposal runway",
+};
 
 function priorityVariant(priority: InquiryPreview["routing"]["priority"]) {
   if (priority === "high") return "warning";
@@ -402,7 +413,7 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
     ],
     [items, viewerQueueCount]
   );
-  const savedQueuePresets = useMemo(() => {
+  const savedQueuePresets = useMemo<ResolvedSavedQueuePreset[]>(() => {
     const ownerFocusedPresets: SavedQueuePreset[] =
       viewerQueueCount > 0
         ? [
@@ -527,6 +538,116 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
     viewerQueueCount,
     viewerOwnerId,
   ]);
+  const activePreset = useMemo(
+    () => savedQueuePresets.find((preset) => preset.active) ?? null,
+    [savedQueuePresets]
+  );
+  const focusMetrics = useMemo(
+    () => ({
+      visible: filteredItems.length,
+      urgent: filteredItems.filter((inquiry) => inquiry.routing.priority === "high").length,
+      overdue: filteredItems.filter((inquiry) => isFollowUpDue(inquiry.nextTouchAt)).length,
+      pendingDelivery: filteredItems.filter((inquiry) => inquiry.notificationDelivered === false)
+        .length,
+    }),
+    [filteredItems]
+  );
+  const activeFocusLabels = useMemo(() => {
+    const labels: string[] = [];
+
+    if (queueView !== "all") {
+      labels.push(queueViewLabels[queueView]);
+    }
+
+    if (statusFilter !== "all") {
+      labels.push(statusFilter);
+    }
+
+    if (fitFilter !== "all") {
+      labels.push(`${fitFilter} fit`);
+    }
+
+    if (priorityFilter !== "all") {
+      labels.push(`${priorityFilter} priority`);
+    }
+
+    if (deliveryFilter !== "all") {
+      labels.push(deliveryFilter === "pending" ? "Pending delivery" : "Delivered");
+    }
+
+    if (ownerFilter !== "all") {
+      labels.push(
+        ownerFilter === "unassigned"
+          ? "Unassigned owner"
+          : `Owner: ${resolveInquiryOwnerName(ownerFilter, ownerFilter)}`
+      );
+    }
+
+    if (followUpFilter) {
+      labels.push("Follow-up due");
+    }
+
+    if (search.trim()) {
+      labels.push(`Search: ${search.trim()}`);
+    }
+
+    return labels;
+  }, [deliveryFilter, fitFilter, followUpFilter, ownerFilter, priorityFilter, queueView, search, statusFilter]);
+  const focusSummary = useMemo(() => {
+    if (activePreset) {
+      return {
+        eyebrow: "Pinned focus",
+        title: activePreset.label,
+        description: activePreset.description,
+      };
+    }
+
+    if (hasActiveFilters) {
+      return {
+        eyebrow: "Custom focus",
+        title: queueView === "all" ? "Filtered working view" : queueViewLabels[queueView],
+        description:
+          "This shareable queue combines the current filters into a tighter operating view for daily follow-through.",
+      };
+    }
+
+    return {
+      eyebrow: "Baseline view",
+      title: "All live inquiries",
+      description:
+        "This full queue keeps routing gaps, commercial momentum, and handoff risk visible in one operational workspace.",
+    };
+  }, [activePreset, hasActiveFilters, queueView]);
+  const focusRecommendation = useMemo(() => {
+    if (focusMetrics.visible === 0) {
+      return "No inquiries match this focus right now. Reset to the full queue to reopen coverage.";
+    }
+
+    if (focusMetrics.overdue > 0) {
+      return `${focusMetrics.overdue} overdue follow-up${focusMetrics.overdue === 1 ? "" : "s"} should be worked first to protect response quality.`;
+    }
+
+    if (focusMetrics.pendingDelivery > 0) {
+      return `${focusMetrics.pendingDelivery} notification handoff${focusMetrics.pendingDelivery === 1 ? "" : "s"} still need delivery confirmation.`;
+    }
+
+    if (focusMetrics.urgent > 0) {
+      return `${focusMetrics.urgent} high-priority ${focusMetrics.urgent === 1 ? "lead is" : "leads are"} in view and ready for active triage.`;
+    }
+
+    return "This queue is stable right now, so the team can focus on proposal movement and qualification quality.";
+  }, [focusMetrics]);
+
+  function resetQueueFilters() {
+    setSearch("");
+    setStatusFilter("all");
+    setFitFilter("all");
+    setPriorityFilter("all");
+    setDeliveryFilter("all");
+    setOwnerFilter("all");
+    setFollowUpFilter(false);
+    setQueueView("all");
+  }
 
   function updateInquiry(id: string, updates: Partial<InquiryPreview>) {
     setItems((current) =>
@@ -664,43 +785,90 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
             ))}
           </div>
 
-          {hasActiveFilters ? (
-            <div className="mt-5 flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] pb-5">
-              <StatusBadge variant="accent">Active filters</StatusBadge>
-              {queueView !== "all" ? <StatusBadge>{queueView.replace("-", " ")}</StatusBadge> : null}
-              {statusFilter !== "all" ? <StatusBadge>{statusFilter}</StatusBadge> : null}
-              {fitFilter !== "all" ? <StatusBadge>{fitFilter}</StatusBadge> : null}
-              {priorityFilter !== "all" ? <StatusBadge>{priorityFilter}</StatusBadge> : null}
-              {deliveryFilter !== "all" ? (
-                <StatusBadge>{deliveryFilter === "pending" ? "Pending email" : "Delivered"}</StatusBadge>
-              ) : null}
-              {ownerFilter !== "all" ? (
-                <StatusBadge>
-                  {ownerFilter === "unassigned"
-                    ? "Unassigned"
-                    : resolveInquiryOwnerName(ownerFilter, ownerFilter)}
-                </StatusBadge>
-              ) : null}
-              {followUpFilter ? <StatusBadge>Follow-up due</StatusBadge> : null}
-              {search.trim() ? <StatusBadge>{`Search: ${search.trim()}`}</StatusBadge> : null}
-              <button
-                type="button"
-                onClick={() => {
-                  setSearch("");
-                  setStatusFilter("all");
-                  setFitFilter("all");
-                  setPriorityFilter("all");
-                  setDeliveryFilter("all");
-                  setOwnerFilter("all");
-                  setFollowUpFilter(false);
-                  setQueueView("all");
-                }}
-                className="ml-auto text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)] transition-colors hover:text-[var(--color-text)]"
-              >
-                Clear all
-              </button>
+          <div className="mt-5 border-b border-[var(--color-border)] pb-5">
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+              <div className="border border-[var(--color-border)] bg-[var(--color-bg)] p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-accent)]">
+                      Today&apos;s focus
+                    </p>
+                    <h3 className="mt-3 font-display text-2xl font-bold tracking-tight">
+                      {focusSummary.title}
+                    </h3>
+                    <p className="mt-2 text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+                      {focusSummary.eyebrow}
+                    </p>
+                  </div>
+                  {hasActiveFilters ? (
+                    <button
+                      type="button"
+                      onClick={resetQueueFilters}
+                      className="text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)] transition-colors hover:text-[var(--color-text)]"
+                    >
+                      Clear all
+                    </button>
+                  ) : null}
+                </div>
+
+                <p className="mt-4 max-w-2xl text-sm leading-relaxed text-[var(--color-text-muted)]">
+                  {focusSummary.description}
+                </p>
+                <p className="mt-4 text-sm leading-relaxed text-[var(--color-text)]">
+                  {focusRecommendation}
+                </p>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <StatusBadge variant="accent">{focusSummary.eyebrow}</StatusBadge>
+                  {activeFocusLabels.length > 0 ? (
+                    activeFocusLabels.map((label) => <StatusBadge key={label}>{label}</StatusBadge>)
+                  ) : (
+                    <StatusBadge>Full queue coverage</StatusBadge>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                {[
+                  {
+                    label: "Visible now",
+                    value: focusMetrics.visible,
+                    detail: "Leads currently in this working view.",
+                  },
+                  {
+                    label: "Urgent priority",
+                    value: focusMetrics.urgent,
+                    detail: "High-priority inquiries needing active triage.",
+                  },
+                  {
+                    label: "Follow-up due",
+                    value: focusMetrics.overdue,
+                    detail: "Scheduled next touches already due.",
+                  },
+                  {
+                    label: "Pending delivery",
+                    value: focusMetrics.pendingDelivery,
+                    detail: "Notification handoffs still waiting to complete.",
+                  },
+                ].map((metric) => (
+                  <div
+                    key={metric.label}
+                    className="border border-[var(--color-border)] bg-[var(--color-bg)] p-4"
+                  >
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+                      {metric.label}
+                    </p>
+                    <p className="mt-3 font-display text-3xl font-bold tracking-tight text-[var(--color-text)]">
+                      {metric.value}
+                    </p>
+                    <p className="mt-2 text-sm leading-relaxed text-[var(--color-text-muted)]">
+                      {metric.detail}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
-          ) : null}
+          </div>
 
           <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
             <label className="block xl:col-span-2">
