@@ -29,6 +29,20 @@ interface InquiryPipelineProps {
 
 type QueueView = "all" | "mine" | "urgent" | "follow-up" | "proposal";
 type DeliveryFilter = "all" | "pending" | "delivered";
+type SavedQueuePreset = {
+  key: string;
+  label: string;
+  description: string;
+  filters: {
+    queueView?: QueueView;
+    status?: InquiryPreview["status"] | "all";
+    fit?: InquiryPreview["routing"]["fit"] | "all";
+    priority?: InquiryPreview["routing"]["priority"] | "all";
+    delivery?: DeliveryFilter;
+    owner?: string;
+    followUp?: boolean;
+  };
+};
 
 const statusOptions = [
   "New",
@@ -96,6 +110,17 @@ function isFollowUpDue(nextTouchAt?: string) {
 
   const timestamp = new Date(nextTouchAt).getTime();
   return !Number.isNaN(timestamp) && timestamp <= Date.now();
+}
+
+function matchesOwnerFilter(inquiry: InquiryPreview, ownerFilter: string) {
+  return (
+    ownerFilter === "all" ||
+    (ownerFilter === "unassigned" && !inquiry.assignedOwnerId) ||
+    inquiry.assignedOwnerId === ownerFilter ||
+    (!inquiry.assignedOwnerId &&
+      ownerFilter !== "unassigned" &&
+      resolveInquiryOwnerName(ownerFilter) === (inquiry.assignedTo ?? inquiry.routing.owner))
+  );
 }
 
 export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps) {
@@ -372,11 +397,122 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
     ],
     [items, viewerName, viewerOwnerId]
   );
+  const savedQueuePresets = useMemo(() => {
+    const presets: SavedQueuePreset[] = [
+      {
+        key: "my-overdue",
+        label: "My overdue",
+        description: "My queue with due follow-ups already in motion.",
+        filters: { queueView: "mine", followUp: true },
+      },
+      {
+        key: "strategic-qualified",
+        label: "Strategic qualified",
+        description: "Strong-fit qualified leads ready for tighter follow-through.",
+        filters: { status: "Qualified", fit: "Strategic" },
+      },
+      {
+        key: "urgent-unassigned",
+        label: "Urgent unassigned",
+        description: "Highest-risk routing gap needing immediate ownership.",
+        filters: { owner: "unassigned", priority: "high" },
+      },
+      {
+        key: "proposal-runway",
+        label: "Proposal runway",
+        description: "Proposal-stage opportunities that need commercial momentum.",
+        filters: { queueView: "proposal" },
+      },
+      {
+        key: "pending-delivery",
+        label: "Pending delivery",
+        description: "Inquiries where the notification handoff has not completed.",
+        filters: { delivery: "pending" },
+      },
+    ];
+
+    return presets.map((preset) => {
+      const count = items.filter((inquiry) => {
+        const matchesView =
+          !preset.filters.queueView ||
+          preset.filters.queueView === "all" ||
+          (preset.filters.queueView === "mine" &&
+            (viewerOwnerId
+              ? inquiry.assignedOwnerId === viewerOwnerId
+              : [inquiry.assignedTo, inquiry.routing.owner].some((value) => value === viewerName))) ||
+          (preset.filters.queueView === "urgent" && inquiry.routing.priority === "high") ||
+          (preset.filters.queueView === "follow-up" && isFollowUpDue(inquiry.nextTouchAt)) ||
+          (preset.filters.queueView === "proposal" && inquiry.status === "Proposal drafted");
+        const matchesStatus =
+          !preset.filters.status ||
+          preset.filters.status === "all" ||
+          inquiry.status === preset.filters.status;
+        const matchesFit =
+          !preset.filters.fit || preset.filters.fit === "all" || inquiry.routing.fit === preset.filters.fit;
+        const matchesPriority =
+          !preset.filters.priority ||
+          preset.filters.priority === "all" ||
+          inquiry.routing.priority === preset.filters.priority;
+        const matchesDelivery =
+          !preset.filters.delivery ||
+          preset.filters.delivery === "all" ||
+          (preset.filters.delivery === "pending" && inquiry.notificationDelivered === false) ||
+          (preset.filters.delivery === "delivered" && inquiry.notificationDelivered !== false);
+        const matchesOwner = matchesOwnerFilter(inquiry, preset.filters.owner ?? "all");
+        const matchesFollowUp =
+          !preset.filters.followUp || isFollowUpDue(inquiry.nextTouchAt);
+
+        return (
+          matchesView &&
+          matchesStatus &&
+          matchesFit &&
+          matchesPriority &&
+          matchesDelivery &&
+          matchesOwner &&
+          matchesFollowUp
+        );
+      }).length;
+      const active =
+        (preset.filters.queueView ?? "all") === queueView &&
+        (preset.filters.status ?? "all") === statusFilter &&
+        (preset.filters.fit ?? "all") === fitFilter &&
+        (preset.filters.priority ?? "all") === priorityFilter &&
+        (preset.filters.delivery ?? "all") === deliveryFilter &&
+        (preset.filters.owner ?? "all") === ownerFilter &&
+        Boolean(preset.filters.followUp) === followUpFilter &&
+        search.trim().length === 0;
+
+      return { ...preset, count, active };
+    });
+  }, [
+    deliveryFilter,
+    fitFilter,
+    followUpFilter,
+    items,
+    ownerFilter,
+    priorityFilter,
+    queueView,
+    search,
+    statusFilter,
+    viewerName,
+    viewerOwnerId,
+  ]);
 
   function updateInquiry(id: string, updates: Partial<InquiryPreview>) {
     setItems((current) =>
       current.map((item) => (item.id === id ? { ...item, ...updates } : item))
     );
+  }
+
+  function applySavedPreset(preset: SavedQueuePreset) {
+    setSearch("");
+    setQueueView(preset.filters.queueView ?? "all");
+    setStatusFilter(preset.filters.status ?? "all");
+    setFitFilter(preset.filters.fit ?? "all");
+    setPriorityFilter(preset.filters.priority ?? "all");
+    setDeliveryFilter(preset.filters.delivery ?? "all");
+    setOwnerFilter(preset.filters.owner ?? "all");
+    setFollowUpFilter(Boolean(preset.filters.followUp));
   }
 
   async function handleSave(id: string) {
@@ -467,6 +603,33 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
                 }
               >
                 {view.label} ({view.count})
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-5 grid gap-3 border-b border-[var(--color-border)] pb-5 md:grid-cols-2 xl:grid-cols-5">
+            {savedQueuePresets.map((preset) => (
+              <button
+                key={preset.key}
+                type="button"
+                onClick={() => applySavedPreset(preset)}
+                className={
+                  preset.active
+                    ? "border border-[var(--color-accent)] bg-[var(--color-accent)]/12 p-4 text-left transition-colors"
+                    : "border border-[var(--color-border)] bg-[var(--color-bg)] p-4 text-left transition-colors hover:border-[var(--color-accent)]/35"
+                }
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+                    {preset.label}
+                  </p>
+                  <StatusBadge variant={preset.active ? "accent" : "neutral"}>
+                    {preset.count}
+                  </StatusBadge>
+                </div>
+                <p className="mt-3 text-sm leading-relaxed text-[var(--color-text-muted)]">
+                  {preset.description}
+                </p>
               </button>
             ))}
           </div>
