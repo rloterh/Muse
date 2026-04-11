@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Reveal } from "@/components/ui/reveal";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { inquiryOwners, resolveInquiryOwnerName } from "@/lib/inquiries/owners";
 import type { InquiryPreview } from "@/types";
 
 interface PipelineHealthProps {
@@ -147,6 +148,39 @@ export function PipelineHealth({ inquiries }: PipelineHealthProps) {
   );
   const regionalMix = topRows(countBy(inquiries.map((inquiry) => inquiry.region).filter(Boolean)), 5);
   const ageBuckets = buildAgeBuckets(inquiries);
+  const ownerSnapshots = inquiryOwners
+    .map((owner) => {
+      const ownerInquiries = inquiries.filter((inquiry) => inquiry.assignedOwnerId === owner.id);
+      const overdue = ownerInquiries.filter((inquiry) => isFollowUpDue(inquiry.nextTouchAt)).length;
+      const dueSoon = ownerInquiries.filter((inquiry) => isFollowUpDueSoon(inquiry.nextTouchAt)).length;
+      const proposals = ownerInquiries.filter(
+        (inquiry) => inquiry.status === "Proposal drafted"
+      ).length;
+      const urgent = ownerInquiries.filter((inquiry) => inquiry.routing.priority === "high").length;
+
+      return {
+        ...owner,
+        total: ownerInquiries.length,
+        overdue,
+        dueSoon,
+        proposals,
+        urgent,
+        href: `/admin?owner=${owner.id}`,
+      };
+    })
+    .sort((left, right) => {
+      if (right.overdue !== left.overdue) {
+        return right.overdue - left.overdue;
+      }
+
+      if (right.total !== left.total) {
+        return right.total - left.total;
+      }
+
+      return right.proposals - left.proposals;
+    });
+  const busiestOwner = ownerSnapshots[0];
+  const overloadedOwners = ownerSnapshots.filter((owner) => owner.total >= 3 || owner.overdue > 0).length;
   const responseWindows = [
     {
       label: "Overdue follow-up",
@@ -178,6 +212,17 @@ export function PipelineHealth({ inquiries }: PipelineHealthProps) {
     },
   ];
   const actionCards = [
+    busiestOwner && busiestOwner.total > 0
+      ? {
+          label: `Rebalance ${busiestOwner.name.split(" ")[0]}'s queue`,
+          description:
+            busiestOwner.overdue > 0
+              ? "This owner has the heaviest live workload and already has overdue follow-up pressure."
+              : "This owner is carrying the heaviest active queue and may need balancing as new work lands.",
+          href: busiestOwner.href,
+          badge: `${busiestOwner.total} active | ${busiestOwner.overdue} overdue`,
+        }
+      : null,
     attentionNeeded > 0
       ? {
           label: "Review at-risk inquiries",
@@ -462,6 +507,96 @@ export function PipelineHealth({ inquiries }: PipelineHealthProps) {
           </div>
         </Reveal>
       </div>
+
+      <Reveal delay={0.1}>
+        <div className="mt-4 border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6">
+          <div className="flex flex-col gap-4 border-b border-[var(--color-border)] pb-5 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                Owner balance
+              </p>
+              <h3 className="mt-3 font-display text-2xl font-bold tracking-tight">
+                Workload and follow-up pressure by owner
+              </h3>
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[var(--color-text-muted)]">
+                This makes the queue easier to rebalance when one operator is absorbing too much
+                active work or proposal follow-through.
+              </p>
+            </div>
+            <StatusBadge variant={overloadedOwners > 1 ? "warning" : "accent"}>
+              {overloadedOwners} owner{overloadedOwners === 1 ? "" : "s"} under pressure
+            </StatusBadge>
+          </div>
+
+          <div className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+            {ownerSnapshots.map((owner, index) => (
+              <Reveal key={owner.id} delay={index * 0.04}>
+                <Link
+                  href={owner.href}
+                  className="group block h-full border border-[var(--color-border)] bg-[var(--color-bg)] p-5 transition-colors hover:border-[var(--color-accent)]/40"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+                        {owner.title}
+                      </p>
+                      <h4 className="mt-3 font-display text-2xl font-bold tracking-tight text-[var(--color-text)]">
+                        {resolveInquiryOwnerName(owner.id, owner.name) ?? owner.name}
+                      </h4>
+                    </div>
+                    <ArrowUpRight className="h-4 w-4 text-[var(--color-accent)] transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-2 gap-3">
+                    <div className="border border-[var(--color-border)] px-3 py-3">
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+                        Active
+                      </p>
+                      <p className="mt-2 font-display text-2xl font-bold tracking-tight">
+                        {owner.total}
+                      </p>
+                    </div>
+                    <div className="border border-[var(--color-border)] px-3 py-3">
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+                        Overdue
+                      </p>
+                      <p className="mt-2 font-display text-2xl font-bold tracking-tight text-[var(--color-accent)]">
+                        {owner.overdue}
+                      </p>
+                    </div>
+                    <div className="border border-[var(--color-border)] px-3 py-3">
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+                        Due Soon
+                      </p>
+                      <p className="mt-2 font-display text-2xl font-bold tracking-tight">
+                        {owner.dueSoon}
+                      </p>
+                    </div>
+                    <div className="border border-[var(--color-border)] px-3 py-3">
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+                        Proposals
+                      </p>
+                      <p className="mt-2 font-display text-2xl font-bold tracking-tight">
+                        {owner.proposals}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <StatusBadge variant={owner.overdue > 0 ? "warning" : "neutral"}>
+                      {owner.overdue > 0 ? "Needs support" : "Stable"}
+                    </StatusBadge>
+                    {owner.urgent > 0 ? (
+                      <StatusBadge variant="accent">{owner.urgent} urgent</StatusBadge>
+                    ) : null}
+                    {owner.total === 0 ? <StatusBadge>Capacity available</StatusBadge> : null}
+                  </div>
+                </Link>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </Reveal>
 
       <Reveal delay={0.12}>
         <div className="mt-4 border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6">
