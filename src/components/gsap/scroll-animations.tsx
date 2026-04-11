@@ -25,6 +25,7 @@ export function ParallaxText({ children, speed = 0.5, className }: ParallaxTextP
 
   useEffect(() => {
     if (!ref.current) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     let ctx: GsapContext | undefined;
 
     loadGSAP().then((gsap) => {
@@ -63,6 +64,7 @@ export function HorizontalScroll({ children, className }: HorizontalScrollProps)
 
   useEffect(() => {
     if (!containerRef.current || !trackRef.current) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     let ctx: GsapContext | undefined;
 
     loadGSAP().then((gsap) => {
@@ -111,6 +113,10 @@ export function Counter({ target, suffix = "", duration = 2, className }: Counte
 
   useEffect(() => {
     if (!ref.current) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      ref.current.textContent = Math.round(target) + suffix;
+      return;
+    }
     let ctx: GsapContext | undefined;
 
     loadGSAP().then((gsap) => {
@@ -156,6 +162,7 @@ export function TextSplitReveal({ text, className, stagger = 0.03 }: TextRevealP
 
   useEffect(() => {
     if (!containerRef.current) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     let ctx: GsapContext | undefined;
 
     loadGSAP().then((gsap) => {
@@ -209,6 +216,7 @@ export function ScrubScale({ children, className, from = 0.85, to = 1 }: ScrubSc
 
   useEffect(() => {
     if (!ref.current) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     let ctx: GsapContext | undefined;
 
     loadGSAP().then((gsap) => {
@@ -246,6 +254,7 @@ export function ScrollLine({ className }: { className?: string }) {
 
   useEffect(() => {
     if (!ref.current) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     let ctx: GsapContext | undefined;
 
     loadGSAP().then((gsap) => {

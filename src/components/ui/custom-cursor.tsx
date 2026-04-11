@@ -11,26 +11,49 @@ export function CustomCursor() {
   const pos = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
-    // Only show custom cursor on desktop
-    if (window.matchMedia("(pointer: coarse)").matches) return;
+    const isCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    if (isCoarsePointer || prefersReducedMotion) return;
 
     function onMouseMove(e: MouseEvent) {
       mouse.current = { x: e.clientX, y: e.clientY };
     }
 
-    function onMouseEnter() { setIsHidden(false); }
-    function onMouseLeave() { setIsHidden(true); }
-
-    // Track hoverable elements
-    function addHoverListeners() {
-      const elements = document.querySelectorAll("a, button, [role='button'], input, textarea, select, .magnetic");
-      elements.forEach((el) => {
-        el.addEventListener("mouseenter", () => setIsHovering(true));
-        el.addEventListener("mouseleave", () => setIsHovering(false));
-      });
+    function onMouseEnter() {
+      setIsHidden(false);
     }
 
-    // Animation loop
+    function onMouseLeave() {
+      setIsHidden(true);
+      setIsHovering(false);
+    }
+
+    function onPointerOver(event: MouseEvent) {
+      const target = event.target;
+
+      if (target instanceof Element) {
+        setIsHovering(
+          Boolean(target.closest("a, button, [role='button'], input, textarea, select, .magnetic"))
+        );
+      }
+    }
+
+    function onPointerOut(event: MouseEvent) {
+      const relatedTarget = event.relatedTarget;
+
+      if (!(relatedTarget instanceof Element)) {
+        setIsHovering(false);
+        return;
+      }
+
+      setIsHovering(
+        Boolean(
+          relatedTarget.closest("a, button, [role='button'], input, textarea, select, .magnetic")
+        )
+      );
+    }
+
     let raf: number;
     function animate() {
       pos.current.x += (mouse.current.x - pos.current.x) * 0.15;
@@ -49,25 +72,26 @@ export function CustomCursor() {
     document.addEventListener("mousemove", onMouseMove);
     document.addEventListener("mouseenter", onMouseEnter);
     document.addEventListener("mouseleave", onMouseLeave);
+    document.addEventListener("mouseover", onPointerOver);
+    document.addEventListener("mouseout", onPointerOut);
 
     animate();
-    addHoverListeners();
-
-    // Re-check for new elements periodically
-    const observer = new MutationObserver(addHoverListeners);
-    observer.observe(document.body, { childList: true, subtree: true });
 
     return () => {
       document.removeEventListener("mousemove", onMouseMove);
       document.removeEventListener("mouseenter", onMouseEnter);
       document.removeEventListener("mouseleave", onMouseLeave);
+      document.removeEventListener("mouseover", onPointerOver);
+      document.removeEventListener("mouseout", onPointerOut);
       cancelAnimationFrame(raf);
-      observer.disconnect();
     };
   }, []);
 
-  // Don't render on mobile/touch
-  if (typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches) {
+  if (
+    typeof window !== "undefined" &&
+    (window.matchMedia("(pointer: coarse)").matches ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+  ) {
     return null;
   }
 
@@ -115,6 +139,9 @@ export function CustomCursor() {
       <style>{`
         @media (pointer: fine) {
           * { cursor: none !important; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          * { cursor: auto !important; }
         }
       `}</style>
     </>

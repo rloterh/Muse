@@ -3,13 +3,14 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { AuthMenu } from "@/components/layout/auth-menu";
 import { siteSettings } from "@/lib/site/config";
 import { canAccessRole, useViewerStore } from "@/stores/viewer-store";
 import { cn } from "@/lib/utils/cn";
 
 export function Navigation() {
+  const prefersReducedMotion = useReducedMotion();
   const pathname = usePathname();
   const viewer = useViewerStore((state) => state.viewer);
   const isOpen = useViewerStore((state) => state.menuOpen);
@@ -82,7 +83,7 @@ export function Navigation() {
             type="button"
             onClick={() => setMenuOpen(!isOpen)}
             className="relative flex items-center gap-3"
-            aria-label="Toggle menu"
+            aria-label={isOpen ? "Close menu" : "Open menu"}
             aria-expanded={isOpen}
             aria-controls="site-menu-overlay"
           >
@@ -96,7 +97,7 @@ export function Navigation() {
                 }
                 className="block h-[1.5px] bg-white"
                 style={{ width: "100%" }}
-                transition={{ duration: 0.3 }}
+                transition={{ duration: prefersReducedMotion ? 0 : 0.3 }}
               />
               <motion.span
                 animate={
@@ -104,7 +105,7 @@ export function Navigation() {
                 }
                 className="block h-[1.5px] bg-white"
                 style={{ width: isOpen ? "100%" : "75%" }}
-                transition={{ duration: 0.3 }}
+                transition={{ duration: prefersReducedMotion ? 0 : 0.3 }}
               />
             </div>
           </button>
@@ -115,10 +116,13 @@ export function Navigation() {
         {isOpen && (
           <motion.div
             id="site-menu-overlay"
-            initial={{ opacity: 0 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Site navigation"
+            initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
+            exit={prefersReducedMotion ? { opacity: 1 } : { opacity: 0 }}
+            transition={{ duration: prefersReducedMotion ? 0 : 0.5 }}
             className="fixed inset-0 z-40 flex bg-[var(--color-bg)]"
           >
             <div className="flex flex-1 flex-col justify-center px-12 lg:px-24">
@@ -126,12 +130,12 @@ export function Navigation() {
                 {overlayLinks.map((link, index) => (
                   <motion.div
                     key={link.href}
-                    initial={{ opacity: 0, x: -40 }}
+                    initial={prefersReducedMotion ? { opacity: 1, x: 0 } : { opacity: 0, x: -40 }}
                     animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
+                    exit={prefersReducedMotion ? { opacity: 1, x: 0 } : { opacity: 0, x: -20 }}
                     transition={{
-                      duration: 0.5,
-                      delay: 0.1 + index * 0.08,
+                      duration: prefersReducedMotion ? 0 : 0.5,
+                      delay: prefersReducedMotion ? 0 : 0.1 + index * 0.08,
                       ease: [0.25, 0.46, 0.45, 0.94],
                     }}
                   >
@@ -160,9 +164,12 @@ export function Navigation() {
             </div>
 
             <motion.div
-              initial={{ opacity: 0 }}
+              initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.4 }}
+              transition={{
+                duration: prefersReducedMotion ? 0 : 0.5,
+                delay: prefersReducedMotion ? 0 : 0.4,
+              }}
               className="hidden w-80 flex-col justify-end p-12 lg:flex"
             >
               <div className="space-y-8">

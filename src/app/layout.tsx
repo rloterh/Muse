@@ -42,10 +42,20 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: websiteJsonLd() }} />
       </head>
       <body className="grain min-h-screen bg-[var(--color-bg)] font-body text-[var(--color-text)] antialiased">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[10001] focus:bg-[var(--color-accent)] focus:px-4 focus:py-3 focus:text-sm focus:font-medium focus:text-[var(--color-bg)]"
+        >
+          Skip to content
+        </a>
         <AuthViewerProvider initialViewer={viewer}>
           <AnalyticsProvider />
           <SmoothScrollProvider>
-            <PageTransition>{children}</PageTransition>
+            <PageTransition>
+              <main id="main-content" tabIndex={-1}>
+                {children}
+              </main>
+            </PageTransition>
           </SmoothScrollProvider>
         </AuthViewerProvider>
       </body>

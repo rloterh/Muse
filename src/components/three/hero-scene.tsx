@@ -4,6 +4,7 @@ import { Suspense, useRef, useMemo } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Float, Environment, AdaptiveDpr } from "@react-three/drei";
 import * as THREE from "three";
+import { useReducedMotion } from "framer-motion";
 
 // ============================================
 // COPPER MATERIAL
@@ -214,6 +215,18 @@ function HeroFallback() {
 }
 
 export function HeroScene() {
+  const prefersReducedMotion = useReducedMotion();
+
+  if (prefersReducedMotion) {
+    return (
+      <div className="absolute inset-0">
+        <HeroFallback />
+        <div className="absolute inset-0 bg-gradient-to-b from-[var(--color-bg)]/30 via-transparent to-[var(--color-bg)]" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[var(--color-bg)]/60 via-transparent to-transparent" />
+      </div>
+    );
+  }
+
   return (
     <div className="absolute inset-0">
       <Suspense fallback={<HeroFallback />}>
