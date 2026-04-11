@@ -28,6 +28,7 @@ interface InquiryPipelineProps {
 }
 
 type QueueView = "all" | "mine" | "urgent" | "follow-up" | "proposal";
+type DeliveryFilter = "all" | "pending" | "delivered";
 
 const statusOptions = [
   "New",
@@ -35,6 +36,8 @@ const statusOptions = [
   "Discovery scheduled",
   "Proposal drafted",
 ] as const satisfies InquiryPreview["status"][];
+const fitOptions = ["Strategic", "Build-ready", "Nurture"] as const satisfies InquiryPreview["routing"]["fit"][];
+const priorityOptions = ["high", "medium", "low"] as const satisfies InquiryPreview["routing"]["priority"][];
 
 function priorityVariant(priority: InquiryPreview["routing"]["priority"]) {
   if (priority === "high") return "warning";
@@ -109,6 +112,24 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
       ? (value as InquiryPreview["status"])
       : "all";
   });
+  const [fitFilter, setFitFilter] = useState<InquiryPreview["routing"]["fit"] | "all">(() => {
+    const value = searchParams.get("fit");
+    return value && fitOptions.includes(value as InquiryPreview["routing"]["fit"])
+      ? (value as InquiryPreview["routing"]["fit"])
+      : "all";
+  });
+  const [priorityFilter, setPriorityFilter] = useState<InquiryPreview["routing"]["priority"] | "all">(
+    () => {
+      const value = searchParams.get("priority");
+      return value && priorityOptions.includes(value as InquiryPreview["routing"]["priority"])
+        ? (value as InquiryPreview["routing"]["priority"])
+        : "all";
+    }
+  );
+  const [deliveryFilter, setDeliveryFilter] = useState<DeliveryFilter>(() => {
+    const value = searchParams.get("delivery");
+    return value === "pending" || value === "delivered" ? value : "all";
+  });
   const [ownerFilter, setOwnerFilter] = useState<string>(() => searchParams.get("owner") ?? "all");
   const [followUpFilter, setFollowUpFilter] = useState(() => searchParams.get("followUp") === "1");
   const [queueView, setQueueView] = useState<QueueView>(() => {
@@ -125,6 +146,9 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
   const hasActiveFilters =
     search.trim().length > 0 ||
     statusFilter !== "all" ||
+    fitFilter !== "all" ||
+    priorityFilter !== "all" ||
+    deliveryFilter !== "all" ||
     ownerFilter !== "all" ||
     followUpFilter ||
     queueView !== "all";
@@ -136,6 +160,9 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
   useEffect(() => {
     const nextSearch = searchParams.get("q") ?? "";
     const nextStatus = searchParams.get("status");
+    const nextFit = searchParams.get("fit");
+    const nextPriority = searchParams.get("priority");
+    const nextDelivery = searchParams.get("delivery");
     const nextOwner = searchParams.get("owner") ?? "all";
     const nextFollowUp = searchParams.get("followUp") === "1";
     const nextView = searchParams.get("view");
@@ -145,6 +172,19 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
       nextStatus && statusOptions.includes(nextStatus as InquiryPreview["status"])
         ? (nextStatus as InquiryPreview["status"])
         : "all"
+    );
+    setFitFilter(
+      nextFit && fitOptions.includes(nextFit as InquiryPreview["routing"]["fit"])
+        ? (nextFit as InquiryPreview["routing"]["fit"])
+        : "all"
+    );
+    setPriorityFilter(
+      nextPriority && priorityOptions.includes(nextPriority as InquiryPreview["routing"]["priority"])
+        ? (nextPriority as InquiryPreview["routing"]["priority"])
+        : "all"
+    );
+    setDeliveryFilter(
+      nextDelivery === "pending" || nextDelivery === "delivered" ? nextDelivery : "all"
     );
     setOwnerFilter(nextOwner);
     setFollowUpFilter(nextFollowUp);
@@ -173,6 +213,24 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
       params.delete("status");
     }
 
+    if (fitFilter !== "all") {
+      params.set("fit", fitFilter);
+    } else {
+      params.delete("fit");
+    }
+
+    if (priorityFilter !== "all") {
+      params.set("priority", priorityFilter);
+    } else {
+      params.delete("priority");
+    }
+
+    if (deliveryFilter !== "all") {
+      params.set("delivery", deliveryFilter);
+    } else {
+      params.delete("delivery");
+    }
+
     if (ownerFilter !== "all") {
       params.set("owner", ownerFilter);
     } else {
@@ -197,7 +255,19 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
     if (nextQuery !== currentQuery) {
       router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
     }
-  }, [followUpFilter, ownerFilter, pathname, queueView, router, search, searchParams, statusFilter]);
+  }, [
+    deliveryFilter,
+    fitFilter,
+    followUpFilter,
+    ownerFilter,
+    pathname,
+    priorityFilter,
+    queueView,
+    router,
+    search,
+    searchParams,
+    statusFilter,
+  ]);
 
   const filteredItems = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -219,6 +289,12 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
           .some((value) => value?.toLowerCase().includes(query));
 
       const matchesStatus = statusFilter === "all" || inquiry.status === statusFilter;
+      const matchesFit = fitFilter === "all" || inquiry.routing.fit === fitFilter;
+      const matchesPriority = priorityFilter === "all" || inquiry.routing.priority === priorityFilter;
+      const matchesDelivery =
+        deliveryFilter === "all" ||
+        (deliveryFilter === "pending" && inquiry.notificationDelivered === false) ||
+        (deliveryFilter === "delivered" && inquiry.notificationDelivered !== false);
       const matchesOwner =
         ownerFilter === "all" ||
         (ownerFilter === "unassigned" && !inquiry.assignedOwnerId) ||
@@ -237,9 +313,30 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
         (queueView === "follow-up" && isFollowUpDue(inquiry.nextTouchAt)) ||
         (queueView === "proposal" && inquiry.status === "Proposal drafted");
 
-      return matchesSearch && matchesStatus && matchesOwner && matchesFollowUp && matchesQueueView;
+      return (
+        matchesSearch &&
+        matchesStatus &&
+        matchesFit &&
+        matchesPriority &&
+        matchesDelivery &&
+        matchesOwner &&
+        matchesFollowUp &&
+        matchesQueueView
+      );
     });
-  }, [followUpFilter, items, ownerFilter, queueView, search, statusFilter, viewerName, viewerOwnerId]);
+  }, [
+    deliveryFilter,
+    fitFilter,
+    followUpFilter,
+    items,
+    ownerFilter,
+    priorityFilter,
+    queueView,
+    search,
+    statusFilter,
+    viewerName,
+    viewerOwnerId,
+  ]);
 
   const queueViews = useMemo(
     () => [
@@ -379,6 +476,11 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
               <StatusBadge variant="accent">Active filters</StatusBadge>
               {queueView !== "all" ? <StatusBadge>{queueView.replace("-", " ")}</StatusBadge> : null}
               {statusFilter !== "all" ? <StatusBadge>{statusFilter}</StatusBadge> : null}
+              {fitFilter !== "all" ? <StatusBadge>{fitFilter}</StatusBadge> : null}
+              {priorityFilter !== "all" ? <StatusBadge>{priorityFilter}</StatusBadge> : null}
+              {deliveryFilter !== "all" ? (
+                <StatusBadge>{deliveryFilter === "pending" ? "Pending email" : "Delivered"}</StatusBadge>
+              ) : null}
               {ownerFilter !== "all" ? (
                 <StatusBadge>
                   {ownerFilter === "unassigned"
@@ -393,6 +495,9 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
                 onClick={() => {
                   setSearch("");
                   setStatusFilter("all");
+                  setFitFilter("all");
+                  setPriorityFilter("all");
+                  setDeliveryFilter("all");
                   setOwnerFilter("all");
                   setFollowUpFilter(false);
                   setQueueView("all");
@@ -404,8 +509,8 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
             </div>
           ) : null}
 
-          <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,0.7fr))]">
-            <label className="block">
+          <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+            <label className="block xl:col-span-2">
               <span className="text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
                 Search
               </span>
@@ -443,6 +548,67 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
 
             <label className="block">
               <span className="text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+                Fit
+              </span>
+              <select
+                value={fitFilter}
+                onChange={(event) =>
+                  setFitFilter(event.target.value as InquiryPreview["routing"]["fit"] | "all")
+                }
+                className="mt-3 w-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none"
+              >
+                <option value="all">All fit levels</option>
+                {fitOptions.map((fit) => (
+                  <option key={fit} value={fit} className="bg-[var(--color-bg)]">
+                    {fit}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+                Priority
+              </span>
+              <select
+                value={priorityFilter}
+                onChange={(event) =>
+                  setPriorityFilter(
+                    event.target.value as InquiryPreview["routing"]["priority"] | "all"
+                  )
+                }
+                className="mt-3 w-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm capitalize text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none"
+              >
+                <option value="all">All priorities</option>
+                {priorityOptions.map((priority) => (
+                  <option key={priority} value={priority} className="bg-[var(--color-bg)]">
+                    {priority}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+                Delivery
+              </span>
+              <select
+                value={deliveryFilter}
+                onChange={(event) => setDeliveryFilter(event.target.value as DeliveryFilter)}
+                className="mt-3 w-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none"
+              >
+                <option value="all">All delivery states</option>
+                <option value="pending" className="bg-[var(--color-bg)]">
+                  Pending email
+                </option>
+                <option value="delivered" className="bg-[var(--color-bg)]">
+                  Delivered
+                </option>
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
                 Owner
               </span>
               <select
@@ -460,7 +626,7 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
               </select>
             </label>
 
-            <label className="flex items-center gap-3 border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 lg:mt-[1.55rem]">
+            <label className="flex items-center gap-3 border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 md:col-span-2 xl:col-span-1 xl:mt-[1.55rem]">
               <input
                 type="checkbox"
                 checked={followUpFilter}

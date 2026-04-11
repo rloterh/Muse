@@ -57,7 +57,7 @@ export function QueuePlaybooks({ inquiries, viewerName }: QueuePlaybooksProps) {
       label: "Triage urgent unassigned",
       description:
         "Handle the highest-risk routing gap first by isolating urgent inquiries that still lack an owner.",
-      href: "/admin?view=urgent&owner=unassigned",
+      href: "/admin?owner=unassigned&priority=high",
       badge: `${urgentUnassigned} urgent unassigned`,
     },
     {
@@ -71,14 +71,14 @@ export function QueuePlaybooks({ inquiries, viewerName }: QueuePlaybooksProps) {
       label: "Protect strategic qualification",
       description:
         "Review the strongest strategic opportunities before they age into ambiguity or lose internal attention.",
-      href: "/admin?status=Qualified",
+      href: "/admin?status=Qualified&fit=Strategic",
       badge: `${strategicQualified} strategic qualified`,
     },
     {
       label: "Repair delivery gaps",
       description:
         "Inspect inquiries where the notification path did not complete, so ops handoff is reliable end to end.",
-      href: "/admin?status=New",
+      href: "/admin?delivery=pending",
       badge: `${notificationGaps} delivery gaps`,
     },
   ];
