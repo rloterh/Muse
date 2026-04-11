@@ -142,7 +142,7 @@ export default async function AdminPage() {
             ))}
           </div>
 
-          <InquiryPipeline inquiries={inquiries} />
+          <InquiryPipeline inquiries={inquiries} viewerName={viewer.name} />
           <ConversionReporting inquiries={inquiries} />
 
           {viewer.role === "admin" && (

@@ -19,7 +19,10 @@ import type { InquiryPreview } from "@/types";
 
 interface InquiryPipelineProps {
   inquiries: InquiryPreview[];
+  viewerName: string;
 }
+
+type QueueView = "all" | "mine" | "urgent" | "follow-up" | "proposal";
 
 const statusOptions = [
   "New",
@@ -87,7 +90,7 @@ function isFollowUpDue(nextTouchAt?: string) {
   return !Number.isNaN(timestamp) && timestamp <= Date.now();
 }
 
-export function InquiryPipeline({ inquiries }: InquiryPipelineProps) {
+export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps) {
   const [items, setItems] = useState(inquiries);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Record<string, string>>({});
@@ -95,6 +98,7 @@ export function InquiryPipeline({ inquiries }: InquiryPipelineProps) {
   const [statusFilter, setStatusFilter] = useState<InquiryPreview["status"] | "all">("all");
   const [ownerFilter, setOwnerFilter] = useState<string>("all");
   const [followUpFilter, setFollowUpFilter] = useState(false);
+  const [queueView, setQueueView] = useState<QueueView>("all");
   const ownerOptions = useMemo(() => {
     const values = new Set(inquiryOwnerOptions);
 
@@ -140,10 +144,50 @@ export function InquiryPipeline({ inquiries }: InquiryPipelineProps) {
         inquiry.assignedTo === ownerFilter ||
         (!inquiry.assignedTo && inquiry.routing.owner === ownerFilter);
       const matchesFollowUp = !followUpFilter || isFollowUpDue(inquiry.nextTouchAt);
+      const matchesQueueView =
+        queueView === "all" ||
+        (queueView === "mine" &&
+          [inquiry.assignedTo, inquiry.routing.owner].some((value) => value === viewerName)) ||
+        (queueView === "urgent" && inquiry.routing.priority === "high") ||
+        (queueView === "follow-up" && isFollowUpDue(inquiry.nextTouchAt)) ||
+        (queueView === "proposal" && inquiry.status === "Proposal drafted");
 
-      return matchesSearch && matchesStatus && matchesOwner && matchesFollowUp;
+      return matchesSearch && matchesStatus && matchesOwner && matchesFollowUp && matchesQueueView;
     });
-  }, [followUpFilter, items, ownerFilter, search, statusFilter]);
+  }, [followUpFilter, items, ownerFilter, queueView, search, statusFilter, viewerName]);
+
+  const queueViews = useMemo(
+    () => [
+      {
+        value: "all" as const,
+        label: "All",
+        count: items.length,
+      },
+      {
+        value: "mine" as const,
+        label: "My queue",
+        count: items.filter((inquiry) =>
+          [inquiry.assignedTo, inquiry.routing.owner].some((value) => value === viewerName)
+        ).length,
+      },
+      {
+        value: "urgent" as const,
+        label: "Urgent",
+        count: items.filter((inquiry) => inquiry.routing.priority === "high").length,
+      },
+      {
+        value: "follow-up" as const,
+        label: "Follow-up due",
+        count: items.filter((inquiry) => isFollowUpDue(inquiry.nextTouchAt)).length,
+      },
+      {
+        value: "proposal" as const,
+        label: "Proposal drafted",
+        count: items.filter((inquiry) => inquiry.status === "Proposal drafted").length,
+      },
+    ],
+    [items, viewerName]
+  );
 
   function updateInquiry(id: string, updates: Partial<InquiryPreview>) {
     setItems((current) =>
@@ -225,7 +269,25 @@ export function InquiryPipeline({ inquiries }: InquiryPipelineProps) {
       </Reveal>
 
       <Reveal delay={0.06}>
-        <div className="mt-8 grid gap-4 border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-5 lg:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,0.7fr))]">
+        <div className="mt-8 border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-5">
+          <div className="flex flex-wrap gap-2 border-b border-[var(--color-border)] pb-5">
+            {queueViews.map((view) => (
+              <button
+                key={view.value}
+                type="button"
+                onClick={() => setQueueView(view.value)}
+                className={
+                  queueView === view.value
+                    ? "border border-[var(--color-accent)] bg-[var(--color-accent)] px-4 py-2 text-xs uppercase tracking-[0.18em] text-[var(--color-bg)] transition-all"
+                    : "border border-[var(--color-border)] px-4 py-2 text-xs uppercase tracking-[0.18em] text-[var(--color-text-muted)] transition-all hover:border-[var(--color-text-dim)] hover:text-[var(--color-text)]"
+                }
+              >
+                {view.label} ({view.count})
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,0.7fr))]">
           <label className="block">
             <span className="text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
               Search
@@ -289,6 +351,7 @@ export function InquiryPipeline({ inquiries }: InquiryPipelineProps) {
             />
             <span className="text-sm text-[var(--color-text-muted)]">Follow-up due only</span>
           </label>
+          </div>
         </div>
       </Reveal>
 
