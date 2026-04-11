@@ -18,6 +18,16 @@ import {
   inquiryOwners,
   resolveInquiryOwnerName,
 } from "@/lib/inquiries/owners";
+import {
+  describeQueueActionReason,
+  filterInquiryPipeline,
+  getNextBestInquiry,
+  isFollowUpDue,
+  serializeQueueFilters,
+  toTimestamp,
+  type DeliveryFilter,
+  type QueueView,
+} from "@/lib/inquiries/queue";
 import { Reveal } from "@/components/ui/reveal";
 import { StatusBadge } from "@/components/ui/status-badge";
 import type { InquiryPreview } from "@/types";
@@ -27,8 +37,6 @@ interface InquiryPipelineProps {
   viewerName: string;
 }
 
-type QueueView = "all" | "mine" | "urgent" | "follow-up" | "proposal";
-type DeliveryFilter = "all" | "pending" | "delivered";
 type SavedQueuePreset = {
   key: string;
   label: string;
@@ -107,15 +115,6 @@ function toDateInputValue(value?: string) {
   return date.toISOString().slice(0, 10);
 }
 
-function toTimestamp(value?: string) {
-  if (!value) {
-    return null;
-  }
-
-  const timestamp = new Date(value).getTime();
-  return Number.isNaN(timestamp) ? null : timestamp;
-}
-
 function toIsoDate(value: string) {
   if (!value) {
     return null;
@@ -123,22 +122,6 @@ function toIsoDate(value: string) {
 
   const date = new Date(`${value}T09:00:00.000Z`);
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
-}
-
-function isFollowUpDue(nextTouchAt?: string) {
-  const timestamp = toTimestamp(nextTouchAt);
-  return timestamp !== null && timestamp <= Date.now();
-}
-
-function matchesOwnerFilter(inquiry: InquiryPreview, ownerFilter: string) {
-  return (
-    ownerFilter === "all" ||
-    (ownerFilter === "unassigned" && !inquiry.assignedOwnerId) ||
-    inquiry.assignedOwnerId === ownerFilter ||
-    (!inquiry.assignedOwnerId &&
-      ownerFilter !== "unassigned" &&
-      resolveInquiryOwnerName(ownerFilter) === (inquiry.assignedTo ?? inquiry.routing.owner))
-  );
 }
 
 export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps) {
@@ -312,74 +295,27 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
     statusFilter,
   ]);
 
-  const filteredItems = useMemo(() => {
-    const query = search.trim().toLowerCase();
-
-    return items.filter((inquiry) => {
-      const matchesSearch =
-        !query ||
-        [
-          inquiry.company,
-          inquiry.contact,
-          inquiry.email,
-          inquiry.source,
-          inquiry.region,
-          inquiry.assignedTo,
-          inquiry.routing.owner,
-          ...inquiry.services,
-        ]
-          .filter(Boolean)
-          .some((value) => value?.toLowerCase().includes(query));
-
-      const matchesStatus = statusFilter === "all" || inquiry.status === statusFilter;
-      const matchesFit = fitFilter === "all" || inquiry.routing.fit === fitFilter;
-      const matchesPriority = priorityFilter === "all" || inquiry.routing.priority === priorityFilter;
-      const matchesDelivery =
-        deliveryFilter === "all" ||
-        (deliveryFilter === "pending" && inquiry.notificationDelivered === false) ||
-        (deliveryFilter === "delivered" && inquiry.notificationDelivered !== false);
-      const matchesOwner =
-        ownerFilter === "all" ||
-        (ownerFilter === "unassigned" && !inquiry.assignedOwnerId) ||
-        inquiry.assignedOwnerId === ownerFilter ||
-        (!inquiry.assignedOwnerId &&
-          ownerFilter !== "unassigned" &&
-          resolveInquiryOwnerName(ownerFilter) === (inquiry.assignedTo ?? inquiry.routing.owner));
-      const matchesFollowUp = !followUpFilter || isFollowUpDue(inquiry.nextTouchAt);
-      const matchesQueueView =
-        queueView === "all" ||
-        (queueView === "mine" &&
-          (viewerOwnerId
-            ? inquiry.assignedOwnerId === viewerOwnerId
-            : [inquiry.assignedTo, inquiry.routing.owner].some((value) => value === viewerName))) ||
-        (queueView === "urgent" && inquiry.routing.priority === "high") ||
-        (queueView === "follow-up" && isFollowUpDue(inquiry.nextTouchAt)) ||
-        (queueView === "proposal" && inquiry.status === "Proposal drafted");
-
-      return (
-        matchesSearch &&
-        matchesStatus &&
-        matchesFit &&
-        matchesPriority &&
-        matchesDelivery &&
-        matchesOwner &&
-        matchesFollowUp &&
-        matchesQueueView
-      );
-    });
-  }, [
-    deliveryFilter,
-    fitFilter,
-    followUpFilter,
-    items,
-    ownerFilter,
-    priorityFilter,
-    queueView,
-    search,
-    statusFilter,
-    viewerName,
-    viewerOwnerId,
-  ]);
+  const queueFilters = useMemo(
+    () => ({
+      search,
+      status: statusFilter,
+      fit: fitFilter,
+      priority: priorityFilter,
+      delivery: deliveryFilter,
+      owner: ownerFilter,
+      followUp: followUpFilter,
+      queueView,
+    }),
+    [deliveryFilter, fitFilter, followUpFilter, ownerFilter, priorityFilter, queueView, search, statusFilter]
+  );
+  const filteredItems = useMemo(
+    () =>
+      filterInquiryPipeline(items, queueFilters, {
+        viewerName,
+        viewerOwnerId,
+      }),
+    [items, queueFilters, viewerName, viewerOwnerId]
+  );
   const viewerQueueCount = useMemo(
     () =>
       items.filter((inquiry) =>
@@ -479,46 +415,23 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
     ];
 
     return presets.map((preset) => {
-      const count = items.filter((inquiry) => {
-        const matchesView =
-          !preset.filters.queueView ||
-          preset.filters.queueView === "all" ||
-          (preset.filters.queueView === "mine" &&
-            (viewerOwnerId
-              ? inquiry.assignedOwnerId === viewerOwnerId
-              : [inquiry.assignedTo, inquiry.routing.owner].some((value) => value === viewerName))) ||
-          (preset.filters.queueView === "urgent" && inquiry.routing.priority === "high") ||
-          (preset.filters.queueView === "follow-up" && isFollowUpDue(inquiry.nextTouchAt)) ||
-          (preset.filters.queueView === "proposal" && inquiry.status === "Proposal drafted");
-        const matchesStatus =
-          !preset.filters.status ||
-          preset.filters.status === "all" ||
-          inquiry.status === preset.filters.status;
-        const matchesFit =
-          !preset.filters.fit || preset.filters.fit === "all" || inquiry.routing.fit === preset.filters.fit;
-        const matchesPriority =
-          !preset.filters.priority ||
-          preset.filters.priority === "all" ||
-          inquiry.routing.priority === preset.filters.priority;
-        const matchesDelivery =
-          !preset.filters.delivery ||
-          preset.filters.delivery === "all" ||
-          (preset.filters.delivery === "pending" && inquiry.notificationDelivered === false) ||
-          (preset.filters.delivery === "delivered" && inquiry.notificationDelivered !== false);
-        const matchesOwner = matchesOwnerFilter(inquiry, preset.filters.owner ?? "all");
-        const matchesFollowUp =
-          !preset.filters.followUp || isFollowUpDue(inquiry.nextTouchAt);
-
-        return (
-          matchesView &&
-          matchesStatus &&
-          matchesFit &&
-          matchesPriority &&
-          matchesDelivery &&
-          matchesOwner &&
-          matchesFollowUp
-        );
-      }).length;
+      const count = filterInquiryPipeline(
+        items,
+        {
+          search: "",
+          status: preset.filters.status ?? "all",
+          fit: preset.filters.fit ?? "all",
+          priority: preset.filters.priority ?? "all",
+          delivery: preset.filters.delivery ?? "all",
+          owner: preset.filters.owner ?? "all",
+          followUp: Boolean(preset.filters.followUp),
+          queueView: preset.filters.queueView ?? "all",
+        },
+        {
+          viewerName,
+          viewerOwnerId,
+        }
+      ).length;
       const active =
         (preset.filters.queueView ?? "all") === queueView &&
         (preset.filters.status ?? "all") === statusFilter &&
@@ -644,87 +557,26 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
 
     return "This queue is stable right now, so the team can focus on proposal movement and qualification quality.";
   }, [focusMetrics]);
+  const activeQueueSearch = useMemo(() => serializeQueueFilters(queueFilters), [queueFilters]);
   const focusAction = useMemo(() => {
-    if (filteredItems.length === 0) {
+    const inquiry = getNextBestInquiry(filteredItems);
+
+    if (!inquiry) {
       return null;
-    }
-
-    const rankedItems = [...filteredItems].sort((left, right) => {
-      const scoreInquiry = (inquiry: InquiryPreview) => {
-        let score = 0;
-
-        if (isFollowUpDue(inquiry.nextTouchAt)) {
-          score += 500;
-        }
-
-        if (inquiry.notificationDelivered === false) {
-          score += 300;
-        }
-
-        if (inquiry.routing.priority === "high") {
-          score += 200;
-        }
-
-        if (inquiry.status === "Proposal drafted") {
-          score += 150;
-        }
-
-        if (inquiry.status === "Qualified" && inquiry.routing.fit === "Strategic") {
-          score += 120;
-        }
-
-        if (!inquiry.assignedOwnerId) {
-          score += 80;
-        }
-
-        return score;
-      };
-
-      const scoreDifference = scoreInquiry(right) - scoreInquiry(left);
-
-      if (scoreDifference !== 0) {
-        return scoreDifference;
-      }
-
-      const leftTouch = toTimestamp(left.nextTouchAt) ?? Number.MAX_SAFE_INTEGER;
-      const rightTouch = toTimestamp(right.nextTouchAt) ?? Number.MAX_SAFE_INTEGER;
-
-      if (leftTouch !== rightTouch) {
-        return leftTouch - rightTouch;
-      }
-
-      const leftUpdated = toTimestamp(left.updatedAt) ?? toTimestamp(left.createdAt) ?? 0;
-      const rightUpdated = toTimestamp(right.updatedAt) ?? toTimestamp(right.createdAt) ?? 0;
-
-      return leftUpdated - rightUpdated;
-    });
-
-    const inquiry = rankedItems[0];
-
-    let reason = "Best next lead in the current working view.";
-    if (isFollowUpDue(inquiry.nextTouchAt)) {
-      reason = "Follow-up date has already passed and needs immediate response.";
-    } else if (inquiry.notificationDelivered === false) {
-      reason = "Notification handoff is still pending and needs delivery confirmation.";
-    } else if (inquiry.routing.priority === "high") {
-      reason = "High-priority lead ready for active triage.";
-    } else if (inquiry.status === "Proposal drafted") {
-      reason = "Proposal-stage opportunity needs commercial follow-through.";
-    } else if (inquiry.status === "Qualified" && inquiry.routing.fit === "Strategic") {
-      reason = "Strategic qualified lead is ready for tighter progression.";
-    } else if (!inquiry.assignedOwnerId) {
-      reason = "Ownership still needs to be set before momentum slips.";
     }
 
     return {
       inquiry,
-      href: `/admin/inquiries/${inquiry.id}`,
+      href: `/admin/inquiries/${inquiry.id}${activeQueueSearch ? `?${activeQueueSearch}` : ""}`,
       ownerLabel: inquiry.assignedOwnerId
-        ? resolveInquiryOwnerName(inquiry.assignedOwnerId, inquiry.assignedTo ?? inquiry.routing.owner)
+        ? resolveInquiryOwnerName(
+            inquiry.assignedOwnerId,
+            inquiry.assignedTo ?? inquiry.routing.owner
+          )
         : "Unassigned",
-      reason,
+      reason: describeQueueActionReason(inquiry),
     };
-  }, [filteredItems]);
+  }, [activeQueueSearch, filteredItems]);
 
   function resetQueueFilters() {
     setSearch("");
@@ -752,6 +604,10 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
     setDeliveryFilter(preset.filters.delivery ?? "all");
     setOwnerFilter(preset.filters.owner ?? "all");
     setFollowUpFilter(Boolean(preset.filters.followUp));
+  }
+
+  function buildInquiryHref(id: string) {
+    return `/admin/inquiries/${id}${activeQueueSearch ? `?${activeQueueSearch}` : ""}`;
   }
 
   async function handleSave(id: string) {
@@ -1417,7 +1273,7 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
 
                   <div className="mt-6 inline-flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
                     <Link
-                      href={`/admin/inquiries/${inquiry.id}`}
+                      href={buildInquiryHref(inquiry.id)}
                       className="inline-flex items-center gap-2 transition-colors hover:text-[var(--color-accent)]"
                     >
                       Open inquiry brief

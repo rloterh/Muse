@@ -6,7 +6,17 @@ import { Navigation } from "@/components/layout/navigation";
 import { Reveal } from "@/components/ui/reveal";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { requireViewerRole } from "@/lib/auth/viewer";
-import { getInquiryById } from "@/lib/inquiries/repository";
+import { getViewerOwnerId, resolveInquiryOwnerName } from "@/lib/inquiries/owners";
+import {
+  describeQueueActionReason,
+  filterInquiryPipeline,
+  isFollowUpDue,
+  serializeQueueFilters,
+  sortInquiriesByQueuePriority,
+  type DeliveryFilter,
+  type QueueView,
+} from "@/lib/inquiries/queue";
+import { getInquiryPipeline } from "@/lib/inquiries/repository";
 
 function formatTimestamp(value?: string, options?: Intl.DateTimeFormatOptions) {
   if (!value) {
@@ -37,16 +47,84 @@ function priorityVariant(priority: string) {
 
 export default async function AdminInquiryPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requireViewerRole("editor", "/admin");
+  const viewer = await requireViewerRole("editor", "/admin");
   const { id } = await params;
-  const inquiry = await getInquiryById(id);
+  const rawSearchParams = await searchParams;
+  const inquiries = await getInquiryPipeline();
+  const inquiry = inquiries.find((entry) => entry.id === id) ?? null;
 
   if (!inquiry) {
     notFound();
   }
+
+  const getSearchParam = (key: string) => {
+    const value = rawSearchParams[key];
+    return Array.isArray(value) ? value[0] : value;
+  };
+  const queueViewValue = getSearchParam("view");
+  const deliveryValue = getSearchParam("delivery");
+  const queueView: QueueView =
+    queueViewValue === "mine" ||
+    queueViewValue === "urgent" ||
+    queueViewValue === "follow-up" ||
+    queueViewValue === "proposal"
+      ? queueViewValue
+      : "all";
+  const deliveryFilter: DeliveryFilter =
+    deliveryValue === "pending" || deliveryValue === "delivered" ? deliveryValue : "all";
+  const queueFilters = {
+    search: getSearchParam("q") ?? "",
+    status: (getSearchParam("status") as typeof inquiry.status | "all" | undefined) ?? "all",
+    fit: (getSearchParam("fit") as typeof inquiry.routing.fit | "all" | undefined) ?? "all",
+    priority:
+      (getSearchParam("priority") as typeof inquiry.routing.priority | "all" | undefined) ?? "all",
+    delivery: deliveryFilter,
+    owner: getSearchParam("owner") ?? "all",
+    followUp: getSearchParam("followUp") === "1",
+    queueView,
+  };
+  const viewerOwnerId = getViewerOwnerId(viewer.name);
+  const contextualQueue = filterInquiryPipeline(inquiries, queueFilters, {
+    viewerName: viewer.name,
+    viewerOwnerId,
+  });
+  const workflowBase = contextualQueue.some((entry) => entry.id === inquiry.id)
+    ? contextualQueue
+    : inquiries;
+  const rankedWorkflow = sortInquiriesByQueuePriority(workflowBase);
+  const currentIndex = rankedWorkflow.findIndex((entry) => entry.id === inquiry.id);
+  const nextInquiry =
+    currentIndex >= 0 && currentIndex < rankedWorkflow.length - 1
+      ? rankedWorkflow[currentIndex + 1]
+      : null;
+  const queueQuery = serializeQueueFilters(queueFilters);
+  const queueHref = queueQuery ? `/admin?${queueQuery}` : "/admin";
+  const nextInquiryHref = nextInquiry
+    ? `/admin/inquiries/${nextInquiry.id}${queueQuery ? `?${queueQuery}` : ""}`
+    : null;
+  const queueContextBadges = [
+    queueView !== "all" ? queueView.replace("-", " ") : null,
+    queueFilters.status !== "all" ? queueFilters.status : null,
+    queueFilters.fit !== "all" ? `${queueFilters.fit} fit` : null,
+    queueFilters.priority !== "all" ? `${queueFilters.priority} priority` : null,
+    queueFilters.delivery !== "all"
+      ? queueFilters.delivery === "pending"
+        ? "Pending delivery"
+        : "Delivered"
+      : null,
+    queueFilters.owner !== "all"
+      ? queueFilters.owner === "unassigned"
+        ? "Unassigned owner"
+        : resolveInquiryOwnerName(queueFilters.owner, queueFilters.owner)
+      : null,
+    queueFilters.followUp ? "Follow-up due" : null,
+    queueFilters.search.trim() ? `Search: ${queueFilters.search.trim()}` : null,
+  ].filter(Boolean) as string[];
 
   const nextTouchAt = formatTimestamp(inquiry.nextTouchAt, {
     day: "2-digit",
@@ -65,11 +143,11 @@ export default async function AdminInquiryPage({
         <div className="mx-auto max-w-7xl">
           <Reveal>
             <Link
-              href="/admin"
+              href={queueHref}
               className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)] transition-colors hover:text-[var(--color-accent)]"
             >
               <ArrowLeft className="h-4 w-4" />
-              Back to admin
+              Back to queue
             </Link>
             <p className="mt-8 text-xs font-medium uppercase tracking-[0.3em] text-[var(--color-accent)]">
               Inquiry brief
@@ -264,6 +342,95 @@ export default async function AdminInquiryPage({
 
             <Reveal delay={0.08}>
               <div className="space-y-6 lg:sticky lg:top-28">
+                <div className="border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6">
+                  <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                    Queue workflow
+                  </p>
+                  <div className="mt-5 space-y-4 border-b border-[var(--color-border)] pb-5">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+                        Working order
+                      </p>
+                      <p className="mt-2 text-sm text-[var(--color-text)]">
+                        {queueContextBadges.length > 0 ? "Filtered queue context" : "Global ops order"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+                        Position
+                      </p>
+                      <p className="mt-2 text-sm text-[var(--color-text)]">
+                        {currentIndex >= 0 ? `${currentIndex + 1} of ${rankedWorkflow.length}` : "Outside current queue"}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {queueContextBadges.length > 0 ? (
+                        queueContextBadges.map((badge) => <StatusBadge key={badge}>{badge}</StatusBadge>)
+                      ) : (
+                        <StatusBadge>Full queue coverage</StatusBadge>
+                      )}
+                    </div>
+                    <Link
+                      href={queueHref}
+                      className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)] transition-colors hover:text-[var(--color-accent)]"
+                    >
+                      Return to queue
+                      <ArrowUpRight className="h-4 w-4 text-[var(--color-accent)]" />
+                    </Link>
+                  </div>
+
+                  {nextInquiry ? (
+                    <div className="mt-5">
+                      <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-accent)]">
+                        Next recommended brief
+                      </p>
+                      <h3 className="mt-3 font-display text-2xl font-bold tracking-tight text-[var(--color-text)]">
+                        {nextInquiry.company}
+                      </h3>
+                      <p className="mt-2 text-sm text-[var(--color-text-muted)]">
+                        {nextInquiry.contact}
+                        {nextInquiry.email ? ` | ${nextInquiry.email}` : ""}
+                      </p>
+                      <p className="mt-3 text-sm leading-relaxed text-[var(--color-text)]">
+                        {describeQueueActionReason(nextInquiry)}
+                      </p>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <StatusBadge variant={nextInquiry.routing.priority === "high" ? "warning" : "accent"}>
+                          {nextInquiry.routing.priority}
+                        </StatusBadge>
+                        <StatusBadge>{nextInquiry.status}</StatusBadge>
+                        <StatusBadge>
+                          {nextInquiry.assignedOwnerId
+                            ? resolveInquiryOwnerName(
+                                nextInquiry.assignedOwnerId,
+                                nextInquiry.assignedTo ?? nextInquiry.routing.owner
+                              )
+                            : "Unassigned"}
+                        </StatusBadge>
+                        {nextInquiry.notificationDelivered === false ? (
+                          <StatusBadge variant="warning">Pending delivery</StatusBadge>
+                        ) : null}
+                        {isFollowUpDue(nextInquiry.nextTouchAt) ? (
+                          <StatusBadge variant="warning">Follow-up due</StatusBadge>
+                        ) : null}
+                      </div>
+                      <Link
+                        href={nextInquiryHref ?? `/admin/inquiries/${nextInquiry.id}`}
+                        className="mt-5 inline-flex items-center gap-2 border border-[var(--color-text)] px-4 py-3 text-xs uppercase tracking-[0.18em] text-[var(--color-text)] transition-all hover:bg-[var(--color-text)] hover:text-[var(--color-bg)]"
+                      >
+                        Open next inquiry
+                        <ArrowUpRight className="h-4 w-4" />
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="mt-5">
+                      <p className="text-sm leading-relaxed text-[var(--color-text-muted)]">
+                        This inquiry is the last item in the current working order. Return to the queue to choose a new focus.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
                 <div className="border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6">
                   <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
                     <CalendarClock className="h-4 w-4 text-[var(--color-accent)]" />
