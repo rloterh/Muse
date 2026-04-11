@@ -3,6 +3,7 @@ import { ConversionReporting } from "@/components/admin/conversion-reporting";
 import { InquiryOverview } from "@/components/admin/inquiry-overview";
 import { InquiryPipeline } from "@/components/admin/inquiry-pipeline";
 import { InviteUserCard } from "@/components/admin/invite-user-card";
+import { PipelineHealth } from "@/components/admin/pipeline-health";
 import { Footer } from "@/components/layout/footer";
 import { Navigation } from "@/components/layout/navigation";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -144,6 +145,7 @@ export default async function AdminPage() {
           </div>
 
           <InquiryOverview inquiries={inquiries} />
+          <PipelineHealth inquiries={inquiries} />
           <InquiryPipeline inquiries={inquiries} viewerName={viewer.name} />
           <ConversionReporting inquiries={inquiries} />
 
