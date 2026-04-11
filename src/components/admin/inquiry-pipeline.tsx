@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowUpRight,
@@ -7,6 +8,7 @@ import {
   LoaderCircle,
   Radar,
   Save,
+  Search,
   Sparkles,
   UserRound,
 } from "lucide-react";
@@ -76,10 +78,23 @@ function toIsoDate(value: string) {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
+function isFollowUpDue(nextTouchAt?: string) {
+  if (!nextTouchAt) {
+    return false;
+  }
+
+  const timestamp = new Date(nextTouchAt).getTime();
+  return !Number.isNaN(timestamp) && timestamp <= Date.now();
+}
+
 export function InquiryPipeline({ inquiries }: InquiryPipelineProps) {
   const [items, setItems] = useState(inquiries);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Record<string, string>>({});
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<InquiryPreview["status"] | "all">("all");
+  const [ownerFilter, setOwnerFilter] = useState<string>("all");
+  const [followUpFilter, setFollowUpFilter] = useState(false);
   const ownerOptions = useMemo(() => {
     const values = new Set(inquiryOwnerOptions);
 
@@ -99,6 +114,36 @@ export function InquiryPipeline({ inquiries }: InquiryPipelineProps) {
   useEffect(() => {
     setItems(inquiries);
   }, [inquiries]);
+
+  const filteredItems = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
+    return items.filter((inquiry) => {
+      const matchesSearch =
+        !query ||
+        [
+          inquiry.company,
+          inquiry.contact,
+          inquiry.email,
+          inquiry.source,
+          inquiry.region,
+          inquiry.assignedTo,
+          inquiry.routing.owner,
+          ...inquiry.services,
+        ]
+          .filter(Boolean)
+          .some((value) => value?.toLowerCase().includes(query));
+
+      const matchesStatus = statusFilter === "all" || inquiry.status === statusFilter;
+      const matchesOwner =
+        ownerFilter === "all" ||
+        inquiry.assignedTo === ownerFilter ||
+        (!inquiry.assignedTo && inquiry.routing.owner === ownerFilter);
+      const matchesFollowUp = !followUpFilter || isFollowUpDue(inquiry.nextTouchAt);
+
+      return matchesSearch && matchesStatus && matchesOwner && matchesFollowUp;
+    });
+  }, [followUpFilter, items, ownerFilter, search, statusFilter]);
 
   function updateInquiry(id: string, updates: Partial<InquiryPreview>) {
     setItems((current) =>
@@ -174,21 +219,89 @@ export function InquiryPipeline({ inquiries }: InquiryPipelineProps) {
           </div>
           <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
             <Sparkles className="h-4 w-4 text-[var(--color-accent)]" />
-            {items.length} active inquiries
+            {filteredItems.length} visible inquiries
           </div>
         </div>
       </Reveal>
 
-      {items.length === 0 ? (
+      <Reveal delay={0.06}>
+        <div className="mt-8 grid gap-4 border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-5 lg:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,0.7fr))]">
+          <label className="block">
+            <span className="text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+              Search
+            </span>
+            <span className="mt-3 flex items-center gap-3 border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3">
+              <Search className="h-4 w-4 text-[var(--color-text-dim)]" />
+              <input
+                type="text"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Company, contact, owner, or service"
+                className="w-full bg-transparent text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-dim)] focus:outline-none"
+              />
+            </span>
+          </label>
+
+          <label className="block">
+            <span className="text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+              Status
+            </span>
+            <select
+              value={statusFilter}
+              onChange={(event) =>
+                setStatusFilter(event.target.value as InquiryPreview["status"] | "all")
+              }
+              className="mt-3 w-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none"
+            >
+              <option value="all">All statuses</option>
+              {statusOptions.map((status) => (
+                <option key={status} value={status} className="bg-[var(--color-bg)]">
+                  {status}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+              Owner
+            </span>
+            <select
+              value={ownerFilter}
+              onChange={(event) => setOwnerFilter(event.target.value)}
+              className="mt-3 w-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none"
+            >
+              <option value="all">All owners</option>
+              {ownerOptions.map((owner) => (
+                <option key={owner} value={owner} className="bg-[var(--color-bg)]">
+                  {owner}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex items-center gap-3 border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 lg:mt-[1.55rem]">
+            <input
+              type="checkbox"
+              checked={followUpFilter}
+              onChange={(event) => setFollowUpFilter(event.target.checked)}
+              className="h-4 w-4 accent-[var(--color-accent)]"
+            />
+            <span className="text-sm text-[var(--color-text-muted)]">Follow-up due only</span>
+          </label>
+        </div>
+      </Reveal>
+
+      {filteredItems.length === 0 ? (
         <Reveal delay={0.08}>
           <div className="mt-8 border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-8 text-sm text-[var(--color-text-muted)]">
-            No live inquiries yet. New submissions will appear here once the contact flow starts
-            capturing persisted records.
+            No inquiries match the current filters. Clear one of the filters to broaden the queue
+            again.
           </div>
         </Reveal>
       ) : (
         <div className="mt-8 grid gap-4 xl:grid-cols-2">
-          {items.map((inquiry, index) => {
+          {filteredItems.map((inquiry, index) => {
             const createdAt = formatTimestamp(inquiry.createdAt);
             const updatedAt = formatTimestamp(inquiry.updatedAt);
             const nextTouchAt = formatTimestamp(inquiry.nextTouchAt, {
@@ -199,7 +312,7 @@ export function InquiryPipeline({ inquiries }: InquiryPipelineProps) {
             const history = inquiry.history ?? [];
 
             return (
-              <Reveal key={inquiry.id} delay={index * 0.06}>
+              <Reveal key={inquiry.id} delay={index * 0.05}>
                 <div className="h-full border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6">
                   <div className="flex items-start justify-between gap-4">
                     <div>
@@ -227,6 +340,9 @@ export function InquiryPipeline({ inquiries }: InquiryPipelineProps) {
                     ))}
                     {inquiry.notificationDelivered === false && (
                       <StatusBadge variant="warning">Email pending</StatusBadge>
+                    )}
+                    {isFollowUpDue(inquiry.nextTouchAt) && (
+                      <StatusBadge variant="warning">Follow-up due</StatusBadge>
                     )}
                   </div>
 
@@ -428,7 +544,7 @@ export function InquiryPipeline({ inquiries }: InquiryPipelineProps) {
                           Recent activity
                         </p>
                         <div className="mt-3 space-y-3">
-                          {history.slice(0, 3).map((entry) => (
+                          {history.slice(0, 2).map((entry) => (
                             <div
                               key={entry.id}
                               className="border border-[var(--color-border)] bg-[var(--color-bg)] p-3"
@@ -460,8 +576,13 @@ export function InquiryPipeline({ inquiries }: InquiryPipelineProps) {
                   )}
 
                   <div className="mt-6 inline-flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
-                    Operational inquiry brief
-                    <ArrowUpRight className="h-4 w-4 text-[var(--color-accent)]" />
+                    <Link
+                      href={`/admin/inquiries/${inquiry.id}`}
+                      className="inline-flex items-center gap-2 transition-colors hover:text-[var(--color-accent)]"
+                    >
+                      Open inquiry brief
+                      <ArrowUpRight className="h-4 w-4 text-[var(--color-accent)]" />
+                    </Link>
                   </div>
                 </div>
               </Reveal>

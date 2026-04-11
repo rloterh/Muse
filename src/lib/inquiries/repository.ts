@@ -262,6 +262,11 @@ export async function getInquiryPipeline() {
   return inquiries.length ? inquiries : siteSettings.inquiryPipeline;
 }
 
+export async function getInquiryById(inquiryId: string) {
+  const inquiries = await getInquiryPipeline();
+  return inquiries.find((inquiry) => inquiry.id === inquiryId) ?? null;
+}
+
 export async function createInquiryRecord(input: CreateInquiryInput) {
   const supabase = createAdminSupabaseClient();
   const { data, error } = await supabase
