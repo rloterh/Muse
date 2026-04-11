@@ -75,11 +75,13 @@ function formatTimestamp(value?: string, options?: Intl.DateTimeFormatOptions) {
     return null;
   }
 
-  const date = new Date(value);
+  const timestamp = toTimestamp(value);
 
-  if (Number.isNaN(date.getTime())) {
+  if (timestamp === null) {
     return null;
   }
+
+  const date = new Date(timestamp);
 
   return new Intl.DateTimeFormat(
     "en-GB",
@@ -105,6 +107,15 @@ function toDateInputValue(value?: string) {
   return date.toISOString().slice(0, 10);
 }
 
+function toTimestamp(value?: string) {
+  if (!value) {
+    return null;
+  }
+
+  const timestamp = new Date(value).getTime();
+  return Number.isNaN(timestamp) ? null : timestamp;
+}
+
 function toIsoDate(value: string) {
   if (!value) {
     return null;
@@ -115,12 +126,8 @@ function toIsoDate(value: string) {
 }
 
 function isFollowUpDue(nextTouchAt?: string) {
-  if (!nextTouchAt) {
-    return false;
-  }
-
-  const timestamp = new Date(nextTouchAt).getTime();
-  return !Number.isNaN(timestamp) && timestamp <= Date.now();
+  const timestamp = toTimestamp(nextTouchAt);
+  return timestamp !== null && timestamp <= Date.now();
 }
 
 function matchesOwnerFilter(inquiry: InquiryPreview, ownerFilter: string) {
@@ -637,6 +644,87 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
 
     return "This queue is stable right now, so the team can focus on proposal movement and qualification quality.";
   }, [focusMetrics]);
+  const focusAction = useMemo(() => {
+    if (filteredItems.length === 0) {
+      return null;
+    }
+
+    const rankedItems = [...filteredItems].sort((left, right) => {
+      const scoreInquiry = (inquiry: InquiryPreview) => {
+        let score = 0;
+
+        if (isFollowUpDue(inquiry.nextTouchAt)) {
+          score += 500;
+        }
+
+        if (inquiry.notificationDelivered === false) {
+          score += 300;
+        }
+
+        if (inquiry.routing.priority === "high") {
+          score += 200;
+        }
+
+        if (inquiry.status === "Proposal drafted") {
+          score += 150;
+        }
+
+        if (inquiry.status === "Qualified" && inquiry.routing.fit === "Strategic") {
+          score += 120;
+        }
+
+        if (!inquiry.assignedOwnerId) {
+          score += 80;
+        }
+
+        return score;
+      };
+
+      const scoreDifference = scoreInquiry(right) - scoreInquiry(left);
+
+      if (scoreDifference !== 0) {
+        return scoreDifference;
+      }
+
+      const leftTouch = toTimestamp(left.nextTouchAt) ?? Number.MAX_SAFE_INTEGER;
+      const rightTouch = toTimestamp(right.nextTouchAt) ?? Number.MAX_SAFE_INTEGER;
+
+      if (leftTouch !== rightTouch) {
+        return leftTouch - rightTouch;
+      }
+
+      const leftUpdated = toTimestamp(left.updatedAt) ?? toTimestamp(left.createdAt) ?? 0;
+      const rightUpdated = toTimestamp(right.updatedAt) ?? toTimestamp(right.createdAt) ?? 0;
+
+      return leftUpdated - rightUpdated;
+    });
+
+    const inquiry = rankedItems[0];
+
+    let reason = "Best next lead in the current working view.";
+    if (isFollowUpDue(inquiry.nextTouchAt)) {
+      reason = "Follow-up date has already passed and needs immediate response.";
+    } else if (inquiry.notificationDelivered === false) {
+      reason = "Notification handoff is still pending and needs delivery confirmation.";
+    } else if (inquiry.routing.priority === "high") {
+      reason = "High-priority lead ready for active triage.";
+    } else if (inquiry.status === "Proposal drafted") {
+      reason = "Proposal-stage opportunity needs commercial follow-through.";
+    } else if (inquiry.status === "Qualified" && inquiry.routing.fit === "Strategic") {
+      reason = "Strategic qualified lead is ready for tighter progression.";
+    } else if (!inquiry.assignedOwnerId) {
+      reason = "Ownership still needs to be set before momentum slips.";
+    }
+
+    return {
+      inquiry,
+      href: `/admin/inquiries/${inquiry.id}`,
+      ownerLabel: inquiry.assignedOwnerId
+        ? resolveInquiryOwnerName(inquiry.assignedOwnerId, inquiry.assignedTo ?? inquiry.routing.owner)
+        : "Unassigned",
+      reason,
+    };
+  }, [filteredItems]);
 
   function resetQueueFilters() {
     setSearch("");
@@ -826,6 +914,49 @@ export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps)
                     <StatusBadge>Full queue coverage</StatusBadge>
                   )}
                 </div>
+
+                {focusAction ? (
+                  <div className="mt-5 border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-4">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-accent)]">
+                          Next best action
+                        </p>
+                        <h4 className="mt-3 font-display text-2xl font-bold tracking-tight text-[var(--color-text)]">
+                          {focusAction.inquiry.company}
+                        </h4>
+                        <p className="mt-2 text-sm text-[var(--color-text-muted)]">
+                          {focusAction.inquiry.contact}
+                          {focusAction.inquiry.email ? ` | ${focusAction.inquiry.email}` : ""}
+                        </p>
+                        <p className="mt-3 text-sm leading-relaxed text-[var(--color-text)]">
+                          {focusAction.reason}
+                        </p>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <StatusBadge variant={priorityVariant(focusAction.inquiry.routing.priority)}>
+                            {focusAction.inquiry.routing.priority}
+                          </StatusBadge>
+                          <StatusBadge>{focusAction.inquiry.status}</StatusBadge>
+                          <StatusBadge>{focusAction.ownerLabel}</StatusBadge>
+                          {focusAction.inquiry.notificationDelivered === false ? (
+                            <StatusBadge variant="warning">Pending delivery</StatusBadge>
+                          ) : null}
+                          {isFollowUpDue(focusAction.inquiry.nextTouchAt) ? (
+                            <StatusBadge variant="warning">Follow-up due</StatusBadge>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <Link
+                        href={focusAction.href}
+                        className="inline-flex items-center gap-2 border border-[var(--color-text)] px-4 py-3 text-xs uppercase tracking-[0.18em] text-[var(--color-text)] transition-all hover:bg-[var(--color-text)] hover:text-[var(--color-bg)]"
+                      >
+                        Open next inquiry
+                        <ArrowUpRight className="h-4 w-4" />
+                      </Link>
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
