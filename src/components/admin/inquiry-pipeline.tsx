@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowUpRight,
   CalendarClock,
@@ -95,20 +96,102 @@ function isFollowUpDue(nextTouchAt?: string) {
 }
 
 export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [items, setItems] = useState(inquiries);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Record<string, string>>({});
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<InquiryPreview["status"] | "all">("all");
-  const [ownerFilter, setOwnerFilter] = useState<string>("all");
-  const [followUpFilter, setFollowUpFilter] = useState(false);
-  const [queueView, setQueueView] = useState<QueueView>("all");
+  const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
+  const [statusFilter, setStatusFilter] = useState<InquiryPreview["status"] | "all">(() => {
+    const value = searchParams.get("status");
+    return value && statusOptions.includes(value as InquiryPreview["status"])
+      ? (value as InquiryPreview["status"])
+      : "all";
+  });
+  const [ownerFilter, setOwnerFilter] = useState<string>(() => searchParams.get("owner") ?? "all");
+  const [followUpFilter, setFollowUpFilter] = useState(() => searchParams.get("followUp") === "1");
+  const [queueView, setQueueView] = useState<QueueView>(() => {
+    const value = searchParams.get("view");
+    return value === "mine" ||
+      value === "urgent" ||
+      value === "follow-up" ||
+      value === "proposal"
+      ? value
+      : "all";
+  });
   const viewerOwnerId = useMemo(() => getViewerOwnerId(viewerName), [viewerName]);
   const ownerOptions = useMemo(() => inquiryOwners, []);
 
   useEffect(() => {
     setItems(inquiries);
   }, [inquiries]);
+
+  useEffect(() => {
+    const nextSearch = searchParams.get("q") ?? "";
+    const nextStatus = searchParams.get("status");
+    const nextOwner = searchParams.get("owner") ?? "all";
+    const nextFollowUp = searchParams.get("followUp") === "1";
+    const nextView = searchParams.get("view");
+
+    setSearch(nextSearch);
+    setStatusFilter(
+      nextStatus && statusOptions.includes(nextStatus as InquiryPreview["status"])
+        ? (nextStatus as InquiryPreview["status"])
+        : "all"
+    );
+    setOwnerFilter(nextOwner);
+    setFollowUpFilter(nextFollowUp);
+    setQueueView(
+      nextView === "mine" ||
+        nextView === "urgent" ||
+        nextView === "follow-up" ||
+        nextView === "proposal"
+        ? nextView
+        : "all"
+    );
+  }, [searchParams]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (search.trim()) {
+      params.set("q", search.trim());
+    } else {
+      params.delete("q");
+    }
+
+    if (statusFilter !== "all") {
+      params.set("status", statusFilter);
+    } else {
+      params.delete("status");
+    }
+
+    if (ownerFilter !== "all") {
+      params.set("owner", ownerFilter);
+    } else {
+      params.delete("owner");
+    }
+
+    if (followUpFilter) {
+      params.set("followUp", "1");
+    } else {
+      params.delete("followUp");
+    }
+
+    if (queueView !== "all") {
+      params.set("view", queueView);
+    } else {
+      params.delete("view");
+    }
+
+    const nextQuery = params.toString();
+    const currentQuery = searchParams.toString();
+
+    if (nextQuery !== currentQuery) {
+      router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+    }
+  }, [followUpFilter, ownerFilter, pathname, queueView, router, search, searchParams, statusFilter]);
 
   const filteredItems = useMemo(() => {
     const query = search.trim().toLowerCase();
