@@ -25,6 +25,7 @@ create table if not exists public.inquiries (
 
 alter table public.inquiries enable row level security;
 
+drop policy if exists "Editors can read inquiries" on public.inquiries;
 create policy "Editors can read inquiries"
 on public.inquiries
 for select
@@ -38,6 +39,7 @@ using (
   )
 );
 
+drop policy if exists "Editors can update inquiries" on public.inquiries;
 create policy "Editors can update inquiries"
 on public.inquiries
 for update

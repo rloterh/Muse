@@ -79,7 +79,7 @@ The remaining blockers are operational rather than code-level:
 
 ### Required before production launch
 
-- Link the Supabase CLI or provide a production connection path, then apply migrations including `20260411_create_billing_events.sql`
+- Link the Supabase CLI or provide a production connection path, then apply migrations including `202604111100_create_billing_events.sql`
 - Configure Stripe environment variables and webhook destination
 - Confirm Cloudflare cache bypass rules for `/auth`, `/admin`, `/api/admin/*`, and `/api/billing/*`
 
@@ -90,8 +90,16 @@ The remaining blockers are operational rather than code-level:
 - Validate reduced-motion behavior in a browser with the OS accessibility setting enabled
 - Send one live-like invite, password reset, and billing webhook test event
 
+### Current deployed-domain check
+
+- `https://muse-beige.vercel.app/` returned `200 OK`
+- `https://muse-beige.vercel.app/auth` returned `404 Not Found`
+- `https://muse-beige.vercel.app/admin` returned `404 Not Found`
+
+This indicates the live deployment is serving a public homepage but is not currently exposing the authenticated app routes expected by this branch. Merge-prep for code is strong; deployment promotion still needs attention.
+
 ## Current risk profile
 
 - Low code risk for compile/runtime regressions based on current verification
-- Medium deployment risk until envs, webhook configuration, and DB migration application are completed
+- Medium deployment risk until envs, webhook configuration, route deployment parity, and DB migration application are completed
 - Low UX risk after the reduced-motion and accessibility shell improvements, with final live audit still advisable

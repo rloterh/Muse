@@ -42,7 +42,7 @@
 
 ## Required follow-through outside the repo
 
-- Apply Supabase migration `20260411_create_billing_events.sql`
+- Apply Supabase migration `202604111100_create_billing_events.sql`
 - Set live or test Stripe environment variables
 - Point Stripe webhooks at `/api/billing/webhook`
 - Configure Cloudflare cache bypass rules for authenticated and billing routes

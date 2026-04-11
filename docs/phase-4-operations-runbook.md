@@ -99,7 +99,7 @@ docker run -p 3000:3000 muse
 
 ## Go-live checklist
 
-- Apply all Supabase migrations, including `20260411_create_billing_events.sql`.
+- Apply all Supabase migrations, including `202604111100_create_billing_events.sql`.
 - Confirm Stripe webhook secret and destination.
 - Confirm billing price IDs map to the intended live products.
 - Send one invite flow and one password-reset flow in production-like test mode.

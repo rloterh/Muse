@@ -16,6 +16,7 @@ create table if not exists public.moderation_tasks (
 
 alter table public.moderation_tasks enable row level security;
 
+drop policy if exists "Editors can read moderation tasks" on public.moderation_tasks;
 create policy "Editors can read moderation tasks"
 on public.moderation_tasks
 for select
@@ -29,6 +30,7 @@ using (
   )
 );
 
+drop policy if exists "Editors can update moderation tasks" on public.moderation_tasks;
 create policy "Editors can update moderation tasks"
 on public.moderation_tasks
 for update
