@@ -9,11 +9,11 @@ import { Navigation } from "@/components/layout/navigation";
 import { SanityImage } from "@/components/ui/sanity-image";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Reveal, StaggerContainer, StaggerItem } from "@/components/ui/reveal";
-import { siteSettings } from "@/lib/site/config";
-import type { CaseStudy } from "@/types";
+import type { CaseStudy, ModerationTask } from "@/types";
 
 interface WorkPageClientProps {
   projects: CaseStudy[];
+  moderationTasks: ModerationTask[];
 }
 
 function statusVariant(status: CaseStudy["status"]) {
@@ -38,7 +38,7 @@ function filterChipClass(active: boolean) {
     : "border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-[var(--color-accent)]/30 hover:text-[var(--color-text)]";
 }
 
-export function WorkPageClient({ projects }: WorkPageClientProps) {
+export function WorkPageClient({ projects, moderationTasks }: WorkPageClientProps) {
   const [activeSector, setActiveSector] = useState<string | null>(null);
   const [activeService, setActiveService] = useState<string | null>(null);
   const [activeEngagement, setActiveEngagement] = useState<string | null>(null);
@@ -315,7 +315,7 @@ export function WorkPageClient({ projects }: WorkPageClientProps) {
         </div>
       </section>
 
-      <ModerationPanel tasks={siteSettings.moderationQueue} />
+      <ModerationPanel tasks={moderationTasks} />
       <Footer />
     </>
   );

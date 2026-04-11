@@ -140,6 +140,21 @@ export interface ModerationTask {
   kind: "case-study" | "content" | "inquiry" | "service";
   priority: "low" | "medium" | "high";
   status: "Needs review" | "Scheduled" | "Published" | "In progress";
+  ownerId?: string;
+  ownerName?: string;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  history?: ModerationActivityEntry[];
+}
+
+export interface ModerationActivityEntry {
+  id: string;
+  label: string;
+  detail: string;
+  actor: string;
+  kind: "system" | "assignment" | "status" | "note" | "approval";
+  createdAt: string;
 }
 
 export type InquiryPriority = "low" | "medium" | "high";

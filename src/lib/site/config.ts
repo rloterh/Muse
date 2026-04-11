@@ -90,6 +90,19 @@ export const siteSettings: SiteSettings = {
       kind: "case-study",
       priority: "high",
       status: "Needs review",
+      ownerId: "sofia-laurent",
+      ownerName: "Sofia Laurent",
+      updatedAt: "2026-04-10T10:30:00.000Z",
+      history: [
+        {
+          id: "queue-luminary-activity-1",
+          label: "Entered moderation",
+          detail: "Case study is awaiting editorial review before scheduled publication.",
+          actor: "System",
+          kind: "system",
+          createdAt: "2026-04-10T08:20:00.000Z",
+        },
+      ],
     },
     {
       id: "queue-inquiry",
@@ -99,6 +112,19 @@ export const siteSettings: SiteSettings = {
       kind: "inquiry",
       priority: "medium",
       status: "In progress",
+      ownerId: "james-okafor",
+      ownerName: "James Okafor",
+      updatedAt: "2026-04-10T14:10:00.000Z",
+      history: [
+        {
+          id: "queue-inquiry-activity-1",
+          label: "Owner assigned",
+          detail: "James Okafor is coordinating discovery readiness for the active inquiry.",
+          actor: "Sofia Laurent",
+          kind: "assignment",
+          createdAt: "2026-04-10T14:10:00.000Z",
+        },
+      ],
     },
     {
       id: "queue-service",
@@ -108,6 +134,19 @@ export const siteSettings: SiteSettings = {
       kind: "service",
       priority: "low",
       status: "Scheduled",
+      ownerId: "amara-cole",
+      ownerName: "Amara Cole",
+      updatedAt: "2026-04-09T16:00:00.000Z",
+      history: [
+        {
+          id: "queue-service-activity-1",
+          label: "Approved for publish",
+          detail: "Service update has been approved and is waiting for the planned publish window.",
+          actor: "Operations",
+          kind: "approval",
+          createdAt: "2026-04-09T16:00:00.000Z",
+        },
+      ],
     },
   ],
   inquiryPipeline: [

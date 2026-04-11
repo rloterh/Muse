@@ -77,7 +77,10 @@ export function ModerationPanel({
               </p>
 
               <div className="mt-5 flex items-center justify-between border-t border-[var(--color-border)] pt-4">
-                <StatusBadge variant="neutral">{task.status}</StatusBadge>
+                <div className="flex flex-wrap gap-2">
+                  <StatusBadge variant="neutral">{task.status}</StatusBadge>
+                  {task.ownerName ? <StatusBadge>{task.ownerName}</StatusBadge> : null}
+                </div>
                 <ArrowUpRight className="h-4 w-4 text-[var(--color-text-dim)] transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-[var(--color-accent)]" />
               </div>
             </Link>

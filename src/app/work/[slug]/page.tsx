@@ -15,7 +15,7 @@ import {
   resolveCaseStudyBySlug,
   resolveJournalPosts,
 } from "@/lib/content/resolvers";
-import { siteSettings } from "@/lib/site/config";
+import { getModerationQueue } from "@/lib/moderation/repository";
 import { caseStudyMeta } from "@/lib/seo/metadata";
 import type { ProjectFact } from "@/types";
 
@@ -95,10 +95,11 @@ export async function generateMetadata({ params }: CaseStudyPageProps): Promise<
 
 export default async function CaseStudyPage({ params }: CaseStudyPageProps) {
   const { slug } = await params;
-  const [project, allProjects, journalPosts] = await Promise.all([
+  const [project, allProjects, journalPosts, moderationTasks] = await Promise.all([
     resolveCaseStudyBySlug(slug),
     resolveCaseStudies(),
     resolveJournalPosts(),
+    getModerationQueue(),
   ]);
 
   if (!project) {
@@ -264,7 +265,7 @@ export default async function CaseStudyPage({ params }: CaseStudyPageProps) {
       <ModerationPanel
         title="Publishing review"
         description="Role-aware affordances now live alongside storytelling routes so editors and admins can review quality without leaving the frontend experience."
-        tasks={siteSettings.moderationQueue.filter((task) => task.kind !== "inquiry")}
+        tasks={moderationTasks.filter((task) => task.kind !== "inquiry")}
       />
 
       <section className="px-8 py-24 lg:px-12">
