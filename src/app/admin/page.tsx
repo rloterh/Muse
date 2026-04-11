@@ -6,23 +6,32 @@ import { InviteUserCard } from "@/components/admin/invite-user-card";
 import { ModerationWorkspace } from "@/components/admin/moderation-workspace";
 import { PipelineHealth } from "@/components/admin/pipeline-health";
 import { QueuePlaybooks } from "@/components/admin/queue-playbooks";
+import { RevenueOperations } from "@/components/admin/revenue-operations";
 import { Footer } from "@/components/layout/footer";
 import { Navigation } from "@/components/layout/navigation";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Reveal } from "@/components/ui/reveal";
 import { requireViewerRole } from "@/lib/auth/viewer";
+import {
+  getStripeCustomerPortalConfigurationId,
+  isStripeConfigured,
+} from "@/lib/billing/env";
+import { getBillingEvents } from "@/lib/billing/repository";
 import { getInquiryPipeline } from "@/lib/inquiries/repository";
 import { getModerationQueue } from "@/lib/moderation/repository";
 import { inquirySummary, moderationSummary } from "@/lib/site/config";
 
 export default async function AdminPage() {
   const viewer = await requireViewerRole("editor", "/admin");
-  const [inquiries, moderationTasks] = await Promise.all([
+  const [inquiries, moderationTasks, billingEvents] = await Promise.all([
     getInquiryPipeline(),
     getModerationQueue(),
+    getBillingEvents(),
   ]);
   const inquiryStats = inquirySummary(inquiries);
   const moderationStats = moderationSummary(moderationTasks);
+  const stripeConfigured = isStripeConfigured();
+  const portalConfigured = Boolean(getStripeCustomerPortalConfigurationId());
 
   return (
     <>
@@ -113,6 +122,11 @@ export default async function AdminPage() {
 
           <ModerationWorkspace tasks={moderationTasks} />
           <ActivityFeed inquiries={inquiries} moderationTasks={moderationTasks} />
+          <RevenueOperations
+            events={billingEvents}
+            stripeConfigured={stripeConfigured}
+            portalConfigured={portalConfigured}
+          />
           <InquiryOverview inquiries={inquiries} />
           <PipelineHealth inquiries={inquiries} />
           <QueuePlaybooks inquiries={inquiries} viewerName={viewer.name} />

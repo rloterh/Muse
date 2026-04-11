@@ -33,7 +33,8 @@ test.describe("Auth and motion smoke", () => {
     await page.waitForLoadState("networkidle");
     await page.waitForTimeout(1000);
 
-    await expect(page.locator("canvas").first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: /We craft digital experiences that move people/i })).toBeVisible();
+    await expect(page.locator("canvas")).toHaveCount(1);
     await page.evaluate(() => window.scrollTo(0, window.innerHeight * 1.5));
     await page.waitForTimeout(1200);
 

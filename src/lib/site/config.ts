@@ -1,4 +1,4 @@
-import type { InquiryPreview, ModerationTask, SiteSettings } from "@/types";
+import type { BillingEventPreview, InquiryPreview, ModerationTask, SiteSettings } from "@/types";
 import { inquiryOwners } from "@/lib/inquiries/owners";
 
 export const siteSettings: SiteSettings = {
@@ -79,6 +79,53 @@ export const siteSettings: SiteSettings = {
       summary: "Senior support across design, engineering, and iteration for teams that need continued momentum after launch.",
       bestFor: "Ongoing product support, design systems, and growth-stage refinement.",
       timeline: "Monthly or quarterly",
+    },
+  ],
+  retainerPlans: [
+    {
+      id: "discovery-sprint",
+      name: "Discovery Sprint",
+      summary:
+        "A fixed-scope strategy engagement for teams that need clarity, delivery sequencing, and a credible next-step plan fast.",
+      cadence: "One-time kickoff",
+      priceFrom: "$6k",
+      bestFor: "New initiatives, repositioning decisions, and enterprise pre-alignment.",
+      highlights: [
+        "Stakeholder alignment session",
+        "Delivery risk map and opportunity framing",
+        "Actionable scope brief with next-step recommendation",
+      ],
+      ctaLabel: "Start discovery sprint",
+    },
+    {
+      id: "launch-program",
+      name: "Launch Program",
+      summary:
+        "A subscription-backed delivery model for launch periods where narrative, design, and engineering need one commercial container.",
+      cadence: "Monthly retainer",
+      priceFrom: "$12k/mo",
+      bestFor: "Brand launches, flagship sites, and integrated campaign delivery.",
+      highlights: [
+        "Senior-led weekly delivery cadence",
+        "Cross-functional design and frontend execution",
+        "Publishing and launch QA coordination",
+      ],
+      ctaLabel: "Start launch program",
+    },
+    {
+      id: "embedded-partnership",
+      name: "Embedded Partnership",
+      summary:
+        "An ongoing retainer for teams that need senior design, product, and engineering support without rebuilding the team each quarter.",
+      cadence: "Quarterly subscription",
+      priceFrom: "$18k/mo",
+      bestFor: "Product iteration, design systems, content operations, and growth-stage support.",
+      highlights: [
+        "Shared operating rhythm with your core team",
+        "Priority support for launches and fixes",
+        "Monthly review, roadmap, and optimization loops",
+      ],
+      ctaLabel: "Start embedded partnership",
     },
   ],
   moderationQueue: [
@@ -286,6 +333,51 @@ export const siteSettings: SiteSettings = {
     },
   ],
 };
+
+export const fallbackBillingEvents: BillingEventPreview[] = [
+  {
+    id: "billing-event-1",
+    source: "system",
+    type: "subscription.active",
+    label: "Embedded partnership renewed",
+    detail: "Quarterly partner subscription renewed successfully for Meridian Labs.",
+    status: "active",
+    customer: "Meridian Labs",
+    planId: "embedded-partnership",
+    subscriptionId: "sub_demo_meridian",
+    amount: 180000,
+    currency: "usd",
+    createdAt: "2026-04-10T09:00:00.000Z",
+  },
+  {
+    id: "billing-event-2",
+    source: "system",
+    type: "invoice.paid",
+    label: "Launch program invoice paid",
+    detail: "Launch program invoice settled and onboarding can continue without finance follow-up.",
+    status: "paid",
+    customer: "Verdant Capital",
+    planId: "launch-program",
+    subscriptionId: "sub_demo_verdant",
+    amount: 120000,
+    currency: "usd",
+    createdAt: "2026-04-09T14:20:00.000Z",
+  },
+  {
+    id: "billing-event-3",
+    source: "system",
+    type: "invoice.payment_failed",
+    label: "Payment retry required",
+    detail: "A renewal payment failed and needs finance follow-up before service access changes.",
+    status: "failed",
+    customer: "Northern Grid",
+    planId: "launch-program",
+    subscriptionId: "sub_demo_northern",
+    amount: 120000,
+    currency: "usd",
+    createdAt: "2026-04-08T11:40:00.000Z",
+  },
+];
 
 export const budgetRanges = ["Under $10k", "$10k - $25k", "$25k - $50k", "$50k - $100k", "$100k+"];
 export const timelineOptions = [
