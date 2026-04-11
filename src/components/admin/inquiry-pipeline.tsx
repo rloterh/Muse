@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowUpRight, LoaderCircle, Radar, Save, Sparkles } from "lucide-react";
+import {
+  ArrowUpRight,
+  CalendarClock,
+  LoaderCircle,
+  Radar,
+  Save,
+  Sparkles,
+  UserRound,
+} from "lucide-react";
+import { inquiryOwnerOptions } from "@/lib/site/config";
 import { Reveal } from "@/components/ui/reveal";
 import { StatusBadge } from "@/components/ui/status-badge";
 import type { InquiryPreview } from "@/types";
@@ -23,7 +32,7 @@ function priorityVariant(priority: InquiryPreview["routing"]["priority"]) {
   return "neutral";
 }
 
-function formatTimestamp(value?: string) {
+function formatTimestamp(value?: string, options?: Intl.DateTimeFormatOptions) {
   if (!value) {
     return null;
   }
@@ -34,18 +43,58 @@ function formatTimestamp(value?: string) {
     return null;
   }
 
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(date);
+  return new Intl.DateTimeFormat(
+    "en-GB",
+    options ?? {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }
+  ).format(date);
+}
+
+function toDateInputValue(value?: string) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toISOString().slice(0, 10);
+}
+
+function toIsoDate(value: string) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(`${value}T09:00:00.000Z`);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
 export function InquiryPipeline({ inquiries }: InquiryPipelineProps) {
   const [items, setItems] = useState(inquiries);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Record<string, string>>({});
-  const availableStatuses = useMemo(() => [...statusOptions], []);
+  const ownerOptions = useMemo(() => {
+    const values = new Set(inquiryOwnerOptions);
+
+    inquiries.forEach((inquiry) => {
+      if (inquiry.assignedTo?.trim()) {
+        values.add(inquiry.assignedTo.trim());
+      }
+
+      if (inquiry.routing.owner?.trim()) {
+        values.add(inquiry.routing.owner.trim());
+      }
+    });
+
+    return [...values];
+  }, [inquiries]);
 
   useEffect(() => {
     setItems(inquiries);
@@ -74,6 +123,8 @@ export function InquiryPipeline({ inquiries }: InquiryPipelineProps) {
         body: JSON.stringify({
           status: inquiry.status,
           notes: inquiry.notes,
+          assignedTo: inquiry.assignedTo,
+          nextTouchAt: inquiry.nextTouchAt ?? null,
         }),
       });
 
@@ -93,7 +144,7 @@ export function InquiryPipeline({ inquiries }: InquiryPipelineProps) {
 
       setMessages((current) => ({
         ...current,
-        [id]: "Inquiry lifecycle saved.",
+        [id]: "Inquiry ops state saved.",
       }));
     } catch {
       setMessages((current) => ({
@@ -117,8 +168,8 @@ export function InquiryPipeline({ inquiries }: InquiryPipelineProps) {
               Operational visibility for new business
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[var(--color-text-muted)]">
-              Live inquiries now persist through Supabase so routing, notes, and lifecycle changes
-              can be managed from the operational shell instead of a static preview dataset.
+              Inquiries now carry ownership, follow-up timing, and recent activity so the admin
+              shell feels like a real operations workspace rather than a static queue.
             </p>
           </div>
           <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
@@ -140,6 +191,12 @@ export function InquiryPipeline({ inquiries }: InquiryPipelineProps) {
           {items.map((inquiry, index) => {
             const createdAt = formatTimestamp(inquiry.createdAt);
             const updatedAt = formatTimestamp(inquiry.updatedAt);
+            const nextTouchAt = formatTimestamp(inquiry.nextTouchAt, {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            });
+            const history = inquiry.history ?? [];
 
             return (
               <Reveal key={inquiry.id} delay={index * 0.06}>
@@ -214,6 +271,54 @@ export function InquiryPipeline({ inquiries }: InquiryPipelineProps) {
                     </div>
                   </div>
 
+                  <div className="mt-6 grid gap-4 border-t border-[var(--color-border)] pt-5 lg:grid-cols-2">
+                    <div>
+                      <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                        <UserRound className="h-4 w-4 text-[var(--color-accent)]" />
+                        Owner
+                      </div>
+                      <select
+                        value={inquiry.assignedTo ?? ""}
+                        onChange={(event) =>
+                          updateInquiry(inquiry.id, {
+                            assignedTo: event.target.value,
+                          })
+                        }
+                        className="mt-3 w-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none"
+                      >
+                        <option value="">Select owner</option>
+                        {ownerOptions.map((owner) => (
+                          <option key={owner} value={owner} className="bg-[var(--color-bg)]">
+                            {owner}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-3 text-xs uppercase tracking-[0.14em] text-[var(--color-text-dim)]">
+                        Suggested owner: {inquiry.routing.owner}
+                      </p>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                        <CalendarClock className="h-4 w-4 text-[var(--color-accent)]" />
+                        Next touch
+                      </div>
+                      <input
+                        type="date"
+                        value={toDateInputValue(inquiry.nextTouchAt)}
+                        onChange={(event) =>
+                          updateInquiry(inquiry.id, {
+                            nextTouchAt: toIsoDate(event.target.value) ?? undefined,
+                          })
+                        }
+                        className="mt-3 w-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none"
+                      />
+                      <p className="mt-3 text-xs uppercase tracking-[0.14em] text-[var(--color-text-dim)]">
+                        {nextTouchAt ? `Scheduled for ${nextTouchAt}` : "No follow-up date set"}
+                      </p>
+                    </div>
+                  </div>
+
                   <div className="mt-6 border-t border-[var(--color-border)] pt-5">
                     <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
                       <Radar className="h-4 w-4 text-[var(--color-accent)]" />
@@ -240,7 +345,7 @@ export function InquiryPipeline({ inquiries }: InquiryPipelineProps) {
                       }
                       className="mt-3 w-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none"
                     >
-                      {availableStatuses.map((status) => (
+                      {statusOptions.map((status) => (
                         <option key={status} value={status} className="bg-[var(--color-bg)]">
                           {status}
                         </option>
@@ -280,7 +385,7 @@ export function InquiryPipeline({ inquiries }: InquiryPipelineProps) {
                         ) : (
                           <>
                             <Save className="h-4 w-4" />
-                            Save lifecycle
+                            Save ops state
                           </>
                         )}
                       </button>
@@ -292,6 +397,67 @@ export function InquiryPipeline({ inquiries }: InquiryPipelineProps) {
                       </p>
                     ) : null}
                   </div>
+
+                  {(inquiry.goals || inquiry.message || history.length > 0) && (
+                    <div className="mt-6 grid gap-4 border-t border-[var(--color-border)] pt-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                          Brief context
+                        </p>
+                        <div className="mt-3 space-y-3">
+                          {inquiry.goals ? (
+                            <p className="text-sm leading-relaxed text-[var(--color-text-muted)]">
+                              {inquiry.goals}
+                            </p>
+                          ) : null}
+                          {inquiry.message ? (
+                            <p className="text-sm leading-relaxed text-[var(--color-text-dim)]">
+                              {inquiry.message}
+                            </p>
+                          ) : null}
+                          {!inquiry.goals && !inquiry.message ? (
+                            <p className="text-sm leading-relaxed text-[var(--color-text-dim)]">
+                              No extended project brief attached yet.
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                          Recent activity
+                        </p>
+                        <div className="mt-3 space-y-3">
+                          {history.slice(0, 3).map((entry) => (
+                            <div
+                              key={entry.id}
+                              className="border border-[var(--color-border)] bg-[var(--color-bg)] p-3"
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-accent)]">
+                                  {entry.label}
+                                </p>
+                                <p className="text-[10px] uppercase tracking-[0.14em] text-[var(--color-text-dim)]">
+                                  {formatTimestamp(entry.createdAt) ?? "Now"}
+                                </p>
+                              </div>
+                              <p className="mt-2 text-sm leading-relaxed text-[var(--color-text-muted)]">
+                                {entry.detail}
+                              </p>
+                              <p className="mt-2 text-[10px] uppercase tracking-[0.14em] text-[var(--color-text-dim)]">
+                                {entry.actor}
+                              </p>
+                            </div>
+                          ))}
+                          {history.length === 0 ? (
+                            <p className="text-sm leading-relaxed text-[var(--color-text-dim)]">
+                              No operational activity recorded yet.
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="mt-6 inline-flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
                     Operational inquiry brief

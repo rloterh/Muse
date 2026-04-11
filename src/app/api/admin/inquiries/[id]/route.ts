@@ -43,6 +43,9 @@ export async function PATCH(
     const body = await request.json();
     const nextStatus = body.status;
     const notes = typeof body.notes === "string" ? body.notes.trim() : undefined;
+    const assignedTo = typeof body.assignedTo === "string" ? body.assignedTo.trim() : undefined;
+    const nextTouchAt =
+      typeof body.nextTouchAt === "string" ? body.nextTouchAt.trim() || null : undefined;
     const { id } = await params;
 
     if (!id) {
@@ -66,7 +69,26 @@ export async function PATCH(
       );
     }
 
-    if (!nextStatus && typeof notes !== "string") {
+    if (assignedTo && assignedTo.length > 120) {
+      return copySupabaseCookies(
+        response,
+        NextResponse.json({ error: "Owner names must be 120 characters or fewer." }, { status: 400 })
+      );
+    }
+
+    if (nextTouchAt && Number.isNaN(new Date(nextTouchAt).getTime())) {
+      return copySupabaseCookies(
+        response,
+        NextResponse.json({ error: "Invalid follow-up date." }, { status: 400 })
+      );
+    }
+
+    if (
+      !nextStatus &&
+      typeof notes !== "string" &&
+      typeof assignedTo !== "string" &&
+      nextTouchAt === undefined
+    ) {
       return copySupabaseCookies(
         response,
         NextResponse.json({ error: "No inquiry updates were provided." }, { status: 400 })
@@ -76,6 +98,9 @@ export async function PATCH(
     const inquiry = await updateInquiryLifecycle(id, {
       status: nextStatus,
       notes,
+      assignedTo,
+      nextTouchAt,
+      actorName: viewer.name,
     });
 
     return copySupabaseCookies(

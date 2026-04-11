@@ -164,6 +164,15 @@ export interface InquiryAttribution {
   utmContent?: string;
 }
 
+export interface InquiryActivityEntry {
+  id: string;
+  label: string;
+  detail: string;
+  actor: string;
+  kind: "system" | "assignment" | "status" | "note";
+  createdAt: string;
+}
+
 export interface InquiryPreview {
   id: string;
   company: string;
@@ -184,6 +193,9 @@ export interface InquiryPreview {
   goals?: string;
   message?: string;
   notificationDelivered?: boolean;
+  assignedTo?: string;
+  nextTouchAt?: string;
+  history?: InquiryActivityEntry[];
   createdAt?: string;
   updatedAt?: string;
 }

@@ -69,7 +69,7 @@ export default async function AdminPage() {
             </div>
           </div>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-3">
+          <div className="mt-4 grid gap-4 lg:grid-cols-4">
             <div className="border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6">
               <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
                 Active inquiries
@@ -92,6 +92,14 @@ export default async function AdminPage() {
               </p>
               <p className="mt-4 font-display text-5xl font-bold tracking-tight">
                 {inquiryStats.scheduled}
+              </p>
+            </div>
+            <div className="border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6">
+              <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                Follow-up due
+              </p>
+              <p className="mt-4 font-display text-5xl font-bold tracking-tight">
+                {inquiryStats.followUpDue}
               </p>
             </div>
           </div>

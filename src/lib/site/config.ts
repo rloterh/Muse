@@ -113,6 +113,7 @@ export const siteSettings: SiteSettings = {
       id: "inquiry-aerflow",
       company: "Aerflow Robotics",
       contact: "Nina Patel",
+      email: "nina@aerflow.example",
       budget: "$50k - $100k",
       timeline: "6-8 weeks",
       services: ["Web Development", "Product Design"],
@@ -128,6 +129,8 @@ export const siteSettings: SiteSettings = {
       },
       notes:
         "Strong technical fit and an accelerated buying timeline. Needs a sharper content and systems recommendation before scoping.",
+      assignedTo: "James Okafor",
+      nextTouchAt: "2026-04-15T09:00:00.000Z",
       attribution: {
         intent: "proposal",
         referralSource: "Referral",
@@ -136,11 +139,30 @@ export const siteSettings: SiteSettings = {
         utmMedium: "referral",
         utmCampaign: "spring-enterprise-intros",
       },
+      history: [
+        {
+          id: "inquiry-aerflow-activity-1",
+          label: "Inquiry received",
+          detail: "Proposal-oriented inbound brief captured with strong engineering fit.",
+          actor: "System",
+          kind: "system",
+          createdAt: "2026-04-09T08:30:00.000Z",
+        },
+        {
+          id: "inquiry-aerflow-activity-2",
+          label: "Assigned to owner",
+          detail: "James Okafor is leading technical qualification and discovery prep.",
+          actor: "Sofia Laurent",
+          kind: "assignment",
+          createdAt: "2026-04-09T10:00:00.000Z",
+        },
+      ],
     },
     {
       id: "inquiry-verdant",
       company: "Verdant Capital",
       contact: "Amelia Scott",
+      email: "amelia@verdant.example",
       budget: "$25k - $50k",
       timeline: "This quarter",
       services: ["Brand Strategy", "Visual Identity"],
@@ -156,6 +178,8 @@ export const siteSettings: SiteSettings = {
       },
       notes:
         "Clear appetite for positioning and identity work. Likely a strong workshop-led engagement with follow-on rollout.",
+      assignedTo: "Sofia Laurent",
+      nextTouchAt: "2026-04-17T13:30:00.000Z",
       attribution: {
         intent: "strategy",
         referralSource: "Organic search",
@@ -164,11 +188,22 @@ export const siteSettings: SiteSettings = {
         utmMedium: "organic",
         utmCampaign: "brand-system-search",
       },
+      history: [
+        {
+          id: "inquiry-verdant-activity-1",
+          label: "Qualified for strategy",
+          detail: "Positioning workshop recommended based on focus and timeline.",
+          actor: "System",
+          kind: "status",
+          createdAt: "2026-04-08T14:45:00.000Z",
+        },
+      ],
     },
     {
       id: "inquiry-northern",
       company: "Northern Grid",
       contact: "Daniel Brooks",
+      email: "daniel@northerngrid.example",
       budget: "$10k - $25k",
       timeline: "Exploring options",
       services: ["Motion & 3D"],
@@ -184,6 +219,8 @@ export const siteSettings: SiteSettings = {
       },
       notes:
         "Strong interest in a wow-factor experience, but the budget/timeline pairing suggests a phased recommendation rather than a full production engagement.",
+      assignedTo: "Kai Tanaka",
+      nextTouchAt: "2026-04-19T16:00:00.000Z",
       attribution: {
         intent: "capability-deck",
         referralSource: "Conference",
@@ -192,6 +229,16 @@ export const siteSettings: SiteSettings = {
         utmMedium: "offline",
         utmCampaign: "design-forward-summit",
       },
+      history: [
+        {
+          id: "inquiry-northern-activity-1",
+          label: "Proposal drafted",
+          detail: "Recommended a phased motion concept sprint before full production scope.",
+          actor: "Kai Tanaka",
+          kind: "note",
+          createdAt: "2026-04-07T11:15:00.000Z",
+        },
+      ],
     },
   ],
 };
@@ -229,6 +276,13 @@ export const serviceOptions = [
   "Product Design",
 ];
 
+export const inquiryOwnerOptions = [
+  "Sofia Laurent",
+  "James Okafor",
+  "Kai Tanaka",
+  "Amara Cole",
+];
+
 export function moderationSummary(tasks: ModerationTask[]) {
   return {
     total: tasks.length,
@@ -238,9 +292,18 @@ export function moderationSummary(tasks: ModerationTask[]) {
 }
 
 export function inquirySummary(inquiries: InquiryPreview[]) {
+  const now = Date.now();
   return {
     total: inquiries.length,
     urgent: inquiries.filter((inquiry) => inquiry.routing.priority === "high").length,
     scheduled: inquiries.filter((inquiry) => inquiry.status === "Discovery scheduled").length,
+    followUpDue: inquiries.filter((inquiry) => {
+      if (!inquiry.nextTouchAt) {
+        return false;
+      }
+
+      const nextTouchAt = new Date(inquiry.nextTouchAt).getTime();
+      return !Number.isNaN(nextTouchAt) && nextTouchAt <= now;
+    }).length,
   };
 }

@@ -3,7 +3,13 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { siteSettings } from "@/lib/site/config";
 import { inferInquiryStatus, qualifyInquiry } from "@/lib/inquiries/qualification";
-import type { InquiryAttribution, InquiryPreview, InquiryRouting, InquiryStatus } from "@/types";
+import type {
+  InquiryActivityEntry,
+  InquiryAttribution,
+  InquiryPreview,
+  InquiryRouting,
+  InquiryStatus,
+} from "@/types";
 
 const inquiryStatusOptions = [
   "New",
@@ -33,6 +39,9 @@ interface InquiryRow {
   notes: string | null;
   attribution: InquiryAttribution | null;
   notification_delivered: boolean;
+  assigned_to_name: string | null;
+  next_touch_at: string | null;
+  history: InquiryActivityEntry[] | null;
   created_at: string;
   updated_at: string;
 }
@@ -62,15 +71,21 @@ interface CreateInquiryInput {
   notes: string;
   attribution: InquiryAttribution;
   notificationDelivered: boolean;
+  assignedTo?: string;
+  nextTouchAt?: string;
+  history: InquiryActivityEntry[];
 }
 
 interface UpdateInquiryLifecycleInput {
   status?: InquiryStatus;
   notes?: string;
+  assignedTo?: string;
+  nextTouchAt?: string | null;
+  actorName: string;
 }
 
 const inquirySelect =
-  "id,name,email,company,website,region,budget,timeline,project_focus,referral_source,services,goals,message,consent,source,status,routing,notes,attribution,notification_delivered,created_at,updated_at";
+  "id,name,email,company,website,region,budget,timeline,project_focus,referral_source,services,goals,message,consent,source,status,routing,notes,attribution,notification_delivered,assigned_to_name,next_touch_at,history,created_at,updated_at";
 
 function isRouting(value: unknown): value is InquiryRouting {
   if (!value || typeof value !== "object") {
@@ -130,6 +145,57 @@ function normalizeRouting(row: InquiryRow): InquiryRouting {
   });
 }
 
+function isActivityEntry(value: unknown): value is InquiryActivityEntry {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.id === "string" &&
+    typeof candidate.label === "string" &&
+    typeof candidate.detail === "string" &&
+    typeof candidate.actor === "string" &&
+    typeof candidate.kind === "string" &&
+    typeof candidate.createdAt === "string"
+  );
+}
+
+function normalizeHistory(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [] as InquiryActivityEntry[];
+  }
+
+  return value.filter(isActivityEntry).sort((left, right) =>
+    right.createdAt.localeCompare(left.createdAt)
+  );
+}
+
+function createActivityEntry(
+  kind: InquiryActivityEntry["kind"],
+  label: string,
+  detail: string,
+  actor: string,
+  createdAt = new Date().toISOString()
+): InquiryActivityEntry {
+  return {
+    id: `${kind}-${createdAt}-${Math.random().toString(36).slice(2, 8)}`,
+    kind,
+    label,
+    detail,
+    actor,
+    createdAt,
+  };
+}
+
+function getDefaultNextTouchAt(priority: InquiryRouting["priority"]) {
+  const nextTouchDate = new Date();
+  const offsetDays = priority === "high" ? 1 : priority === "medium" ? 3 : 5;
+  nextTouchDate.setUTCDate(nextTouchDate.getUTCDate() + offsetDays);
+  nextTouchDate.setUTCHours(9, 0, 0, 0);
+  return nextTouchDate.toISOString();
+}
+
 function toInquiryPreview(row: InquiryRow): InquiryPreview {
   const attribution = normalizeAttribution(row.attribution);
   const routing = normalizeRouting(row);
@@ -154,6 +220,9 @@ function toInquiryPreview(row: InquiryRow): InquiryPreview {
     goals: row.goals ?? undefined,
     message: row.message ?? undefined,
     notificationDelivered: row.notification_delivered,
+    assignedTo: row.assigned_to_name ?? routing.owner,
+    nextTouchAt: row.next_touch_at ?? undefined,
+    history: normalizeHistory(row.history),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -217,6 +286,9 @@ export async function createInquiryRecord(input: CreateInquiryInput) {
       notes: input.notes || null,
       attribution: input.attribution,
       notification_delivered: input.notificationDelivered,
+      assigned_to_name: input.assignedTo || input.routing.owner,
+      next_touch_at: input.nextTouchAt || null,
+      history: input.history,
     })
     .select(inquirySelect)
     .single();
@@ -248,6 +320,19 @@ export async function updateInquiryLifecycle(
   input: UpdateInquiryLifecycleInput
 ) {
   const updates: Record<string, unknown> = {};
+  const supabase = createAdminSupabaseClient();
+  const { data: currentInquiry, error: fetchError } = await supabase
+    .from("inquiries")
+    .select(inquirySelect)
+    .eq("id", inquiryId)
+    .single();
+
+  if (fetchError) {
+    throw fetchError;
+  }
+
+  const current = currentInquiry as InquiryRow;
+  const history = normalizeHistory(current.history);
 
   if (input.status) {
     updates.status = input.status;
@@ -257,7 +342,66 @@ export async function updateInquiryLifecycle(
     updates.notes = input.notes.trim() || null;
   }
 
-  const supabase = createAdminSupabaseClient();
+  if (typeof input.assignedTo === "string") {
+    updates.assigned_to_name = input.assignedTo.trim() || null;
+  }
+
+  if (input.nextTouchAt !== undefined) {
+    updates.next_touch_at = input.nextTouchAt || null;
+  }
+
+  if (input.status && input.status !== current.status) {
+    history.unshift(
+      createActivityEntry(
+        "status",
+        "Status updated",
+        `Lifecycle moved to ${input.status}.`,
+        input.actorName
+      )
+    );
+  }
+
+  if (
+    typeof input.assignedTo === "string" &&
+    input.assignedTo.trim() &&
+    input.assignedTo.trim() !== current.assigned_to_name
+  ) {
+    history.unshift(
+      createActivityEntry(
+        "assignment",
+        "Owner reassigned",
+        `Inquiry reassigned to ${input.assignedTo.trim()}.`,
+        input.actorName
+      )
+    );
+  }
+
+  if (typeof input.notes === "string" && input.notes.trim() && input.notes.trim() !== current.notes) {
+    history.unshift(
+      createActivityEntry(
+        "note",
+        "Internal note updated",
+        input.notes.trim(),
+        input.actorName
+      )
+    );
+  }
+
+  if (input.nextTouchAt !== undefined && input.nextTouchAt !== current.next_touch_at) {
+    history.unshift(
+      createActivityEntry(
+        "system",
+        "Next follow-up scheduled",
+        input.nextTouchAt
+          ? `Next touch scheduled for ${input.nextTouchAt}.`
+          : "Next touch removed from the inquiry.",
+        input.actorName
+      )
+    );
+  }
+
+  updates.history = history.slice(0, 12);
+
   const { data, error } = await supabase
     .from("inquiries")
     .update(updates)
@@ -292,6 +436,16 @@ export function buildInquiryRecordDefaults(input: {
     routing,
     status: inferInquiryStatus(routing.priority),
     source: input.referralSource || input.attribution.referralSource || "Direct",
+    assignedTo: routing.owner,
+    nextTouchAt: getDefaultNextTouchAt(routing.priority),
+    history: [
+      createActivityEntry(
+        "system",
+        "Inquiry received",
+        "Captured from the website inquiry flow and queued for team review.",
+        "System"
+      ),
+    ],
     notes:
       input.message ||
       "Captured from the website inquiry flow and ready for internal qualification.",
