@@ -1,0 +1,493 @@
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { siteSettings } from "@/lib/site/config";
+import { inferInquiryStatus, qualifyInquiry } from "@/lib/inquiries/qualification";
+import { resolveInquiryOwnerId, resolveInquiryOwnerName } from "@/lib/inquiries/owners";
+import type {
+  InquiryActivityEntry,
+  InquiryAttribution,
+  InquiryPreview,
+  InquiryRouting,
+  InquiryStatus,
+} from "@/types";
+
+const inquiryStatusOptions = [
+  "New",
+  "Qualified",
+  "Discovery scheduled",
+  "Proposal drafted",
+] as const satisfies InquiryStatus[];
+
+interface InquiryRow {
+  id: string;
+  name: string;
+  email: string;
+  company: string | null;
+  website: string | null;
+  region: string | null;
+  budget: string | null;
+  timeline: string | null;
+  project_focus: string | null;
+  referral_source: string | null;
+  services: string[] | null;
+  goals: string | null;
+  message: string | null;
+  consent: boolean;
+  source: string | null;
+  status: string | null;
+  routing: InquiryRouting | null;
+  notes: string | null;
+  attribution: InquiryAttribution | null;
+  notification_delivered: boolean;
+  assigned_to_id: string | null;
+  assigned_to_name: string | null;
+  next_touch_at: string | null;
+  history: InquiryActivityEntry[] | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface SupabaseErrorLike {
+  code?: string;
+  message?: string;
+}
+
+interface CreateInquiryInput {
+  name: string;
+  email: string;
+  company: string;
+  website: string;
+  region: string;
+  budget: string;
+  timeline: string;
+  projectFocus: string;
+  referralSource: string;
+  services: string[];
+  goals: string;
+  message: string;
+  consent: boolean;
+  source: string;
+  status: InquiryStatus;
+  routing: InquiryRouting;
+  notes: string;
+  attribution: InquiryAttribution;
+  notificationDelivered: boolean;
+  assignedOwnerId?: string;
+  assignedTo?: string;
+  nextTouchAt?: string;
+  history: InquiryActivityEntry[];
+}
+
+interface UpdateInquiryLifecycleInput {
+  status?: InquiryStatus;
+  notes?: string;
+  assignedOwnerId?: string;
+  assignedTo?: string;
+  nextTouchAt?: string | null;
+  logReviewTouch?: boolean;
+  actorName: string;
+}
+
+const inquirySelect =
+  "id,name,email,company,website,region,budget,timeline,project_focus,referral_source,services,goals,message,consent,source,status,routing,notes,attribution,notification_delivered,assigned_to_id,assigned_to_name,next_touch_at,history,created_at,updated_at";
+
+function isRouting(value: unknown): value is InquiryRouting {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.team === "string" &&
+    typeof candidate.owner === "string" &&
+    typeof candidate.fit === "string" &&
+    typeof candidate.nextStep === "string" &&
+    typeof candidate.priority === "string"
+  );
+}
+
+function isAttribution(value: unknown): value is InquiryAttribution {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function normalizeInquiryStatus(status: string | null | undefined): InquiryStatus {
+  if (status && inquiryStatusOptions.includes(status as InquiryStatus)) {
+    return status as InquiryStatus;
+  }
+
+  return "New";
+}
+
+function isMissingInquiryTableError(error: SupabaseErrorLike | null) {
+  return (
+    error?.code === "PGRST205" ||
+    error?.message?.includes("public.inquiries") ||
+    error?.message?.includes("relation \"public.inquiries\"")
+  );
+}
+
+function normalizeAttribution(value: unknown): InquiryAttribution {
+  if (!isAttribution(value)) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).filter(([, entry]) => typeof entry === "string" && entry.trim())
+  ) as InquiryAttribution;
+}
+
+function normalizeRouting(row: InquiryRow): InquiryRouting {
+  if (isRouting(row.routing)) {
+    return row.routing;
+  }
+
+  return qualifyInquiry({
+    budget: row.budget ?? "",
+    timeline: row.timeline ?? "",
+    services: row.services ?? [],
+    projectFocus: row.project_focus ?? "",
+  });
+}
+
+function isActivityEntry(value: unknown): value is InquiryActivityEntry {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.id === "string" &&
+    typeof candidate.label === "string" &&
+    typeof candidate.detail === "string" &&
+    typeof candidate.actor === "string" &&
+    typeof candidate.kind === "string" &&
+    typeof candidate.createdAt === "string"
+  );
+}
+
+function normalizeHistory(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [] as InquiryActivityEntry[];
+  }
+
+  return value.filter(isActivityEntry).sort((left, right) =>
+    right.createdAt.localeCompare(left.createdAt)
+  );
+}
+
+function createActivityEntry(
+  kind: InquiryActivityEntry["kind"],
+  label: string,
+  detail: string,
+  actor: string,
+  createdAt = new Date().toISOString()
+): InquiryActivityEntry {
+  return {
+    id: `${kind}-${createdAt}-${Math.random().toString(36).slice(2, 8)}`,
+    kind,
+    label,
+    detail,
+    actor,
+    createdAt,
+  };
+}
+
+function getDefaultNextTouchAt(priority: InquiryRouting["priority"]) {
+  const nextTouchDate = new Date();
+  const offsetDays = priority === "high" ? 1 : priority === "medium" ? 3 : 5;
+  nextTouchDate.setUTCDate(nextTouchDate.getUTCDate() + offsetDays);
+  nextTouchDate.setUTCHours(9, 0, 0, 0);
+  return nextTouchDate.toISOString();
+}
+
+function toInquiryPreview(row: InquiryRow): InquiryPreview {
+  const attribution = normalizeAttribution(row.attribution);
+  const routing = normalizeRouting(row);
+
+  return {
+    id: row.id,
+    company: row.company?.trim() || row.name,
+    contact: row.name,
+    email: row.email,
+    website: row.website ?? undefined,
+    budget: row.budget || "TBD",
+    timeline: row.timeline || "TBD",
+    services: row.services ?? [],
+    source: row.source || row.referral_source || attribution.referralSource || "Direct",
+    region: row.region || "Not specified",
+    projectFocus: row.project_focus ?? undefined,
+    referralSource: row.referral_source ?? undefined,
+    status: normalizeInquiryStatus(row.status),
+    routing,
+    notes: row.notes || row.message || "No internal notes yet.",
+    attribution,
+    goals: row.goals ?? undefined,
+    message: row.message ?? undefined,
+    notificationDelivered: row.notification_delivered,
+    assignedOwnerId: resolveInquiryOwnerId(row.assigned_to_id, row.assigned_to_name ?? routing.owner),
+    assignedTo: resolveInquiryOwnerName(row.assigned_to_id, row.assigned_to_name ?? routing.owner),
+    nextTouchAt: row.next_touch_at ?? undefined,
+    history: normalizeHistory(row.history),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function isInquiryStatus(value: unknown): value is InquiryStatus {
+  return typeof value === "string" && inquiryStatusOptions.includes(value as InquiryStatus);
+}
+
+export function getInquiryStatusOptions() {
+  return [...inquiryStatusOptions];
+}
+
+export async function fetchPersistedInquiries() {
+  if (!isSupabaseConfigured()) {
+    return [] as InquiryPreview[];
+  }
+
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("inquiries")
+    .select(inquirySelect)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    if (!isMissingInquiryTableError(error)) {
+      console.error("Unable to fetch inquiries:", error);
+    }
+    return [] as InquiryPreview[];
+  }
+
+  return ((data ?? []) as InquiryRow[]).map(toInquiryPreview);
+}
+
+export async function getInquiryPipeline() {
+  const inquiries = await fetchPersistedInquiries();
+  return inquiries.length ? inquiries : siteSettings.inquiryPipeline;
+}
+
+export async function getInquiryById(inquiryId: string) {
+  const inquiries = await getInquiryPipeline();
+  return inquiries.find((inquiry) => inquiry.id === inquiryId) ?? null;
+}
+
+export async function createInquiryRecord(input: CreateInquiryInput) {
+  const supabase = createAdminSupabaseClient();
+  const { data, error } = await supabase
+    .from("inquiries")
+    .insert({
+      name: input.name,
+      email: input.email,
+      company: input.company || null,
+      website: input.website || null,
+      region: input.region || null,
+      budget: input.budget || null,
+      timeline: input.timeline || null,
+      project_focus: input.projectFocus || null,
+      referral_source: input.referralSource || null,
+      services: input.services,
+      goals: input.goals || null,
+      message: input.message || null,
+      consent: input.consent,
+      source: input.source || null,
+      status: input.status,
+      routing: input.routing,
+      notes: input.notes || null,
+      attribution: input.attribution,
+      notification_delivered: input.notificationDelivered,
+      assigned_to_id:
+        input.assignedOwnerId ??
+        resolveInquiryOwnerId(undefined, input.assignedTo || input.routing.owner) ??
+        null,
+      assigned_to_name:
+        resolveInquiryOwnerName(input.assignedOwnerId, input.assignedTo || input.routing.owner) ||
+        input.routing.owner,
+      next_touch_at: input.nextTouchAt || null,
+      history: input.history,
+    })
+    .select(inquirySelect)
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return toInquiryPreview(data as InquiryRow);
+}
+
+export async function updateInquiryNotificationStatus(
+  inquiryId: string,
+  notificationDelivered: boolean
+) {
+  const supabase = createAdminSupabaseClient();
+  const { error } = await supabase
+    .from("inquiries")
+    .update({ notification_delivered: notificationDelivered })
+    .eq("id", inquiryId);
+
+  if (error) {
+    console.error("Unable to update inquiry notification status:", error);
+  }
+}
+
+export async function updateInquiryLifecycle(
+  inquiryId: string,
+  input: UpdateInquiryLifecycleInput
+) {
+  const updates: Record<string, unknown> = {};
+  const supabase = createAdminSupabaseClient();
+  const { data: currentInquiry, error: fetchError } = await supabase
+    .from("inquiries")
+    .select(inquirySelect)
+    .eq("id", inquiryId)
+    .single();
+
+  if (fetchError) {
+    throw fetchError;
+  }
+
+  const current = currentInquiry as InquiryRow;
+  const history = normalizeHistory(current.history);
+
+  if (input.status) {
+    updates.status = input.status;
+  }
+
+  if (typeof input.notes === "string") {
+    updates.notes = input.notes.trim() || null;
+  }
+
+  if (typeof input.assignedTo === "string") {
+    updates.assigned_to_name = input.assignedTo.trim() || null;
+  }
+
+  if (typeof input.assignedOwnerId === "string") {
+    updates.assigned_to_id = input.assignedOwnerId || null;
+    updates.assigned_to_name =
+      resolveInquiryOwnerName(input.assignedOwnerId, input.assignedTo || current.assigned_to_name) ||
+      current.assigned_to_name ||
+      null;
+  }
+
+  if (input.nextTouchAt !== undefined) {
+    updates.next_touch_at = input.nextTouchAt || null;
+  }
+
+  if (input.logReviewTouch) {
+    history.unshift(
+      createActivityEntry(
+        "system",
+        "Brief reviewed",
+        "Inquiry brief reviewed from the admin workflow rail.",
+        input.actorName
+      )
+    );
+  }
+
+  if (input.status && input.status !== current.status) {
+    history.unshift(
+      createActivityEntry(
+        "status",
+        "Status updated",
+        `Lifecycle moved to ${input.status}.`,
+        input.actorName
+      )
+    );
+  }
+
+  if (
+    typeof input.assignedOwnerId === "string" &&
+    input.assignedOwnerId &&
+    input.assignedOwnerId !== current.assigned_to_id
+  ) {
+    const nextOwnerName =
+      resolveInquiryOwnerName(input.assignedOwnerId, input.assignedTo || current.assigned_to_name) ||
+      "Unassigned owner";
+    history.unshift(
+      createActivityEntry(
+        "assignment",
+        "Owner reassigned",
+        `Inquiry reassigned to ${nextOwnerName}.`,
+        input.actorName
+      )
+    );
+  }
+
+  if (typeof input.notes === "string" && input.notes.trim() && input.notes.trim() !== current.notes) {
+    history.unshift(
+      createActivityEntry(
+        "note",
+        "Internal note updated",
+        input.notes.trim(),
+        input.actorName
+      )
+    );
+  }
+
+  if (input.nextTouchAt !== undefined && input.nextTouchAt !== current.next_touch_at) {
+    history.unshift(
+      createActivityEntry(
+        "system",
+        "Next follow-up scheduled",
+        input.nextTouchAt
+          ? `Next touch scheduled for ${input.nextTouchAt}.`
+          : "Next touch removed from the inquiry.",
+        input.actorName
+      )
+    );
+  }
+
+  updates.history = history.slice(0, 12);
+
+  const { data, error } = await supabase
+    .from("inquiries")
+    .update(updates)
+    .eq("id", inquiryId)
+    .select(inquirySelect)
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return toInquiryPreview(data as InquiryRow);
+}
+
+export function buildInquiryRecordDefaults(input: {
+  budget: string;
+  timeline: string;
+  services: string[];
+  projectFocus: string;
+  referralSource: string;
+  message: string;
+  attribution: InquiryAttribution;
+}) {
+  const routing = qualifyInquiry({
+    budget: input.budget,
+    timeline: input.timeline,
+    services: input.services,
+    projectFocus: input.projectFocus,
+  });
+
+  return {
+    routing,
+    status: inferInquiryStatus(routing.priority),
+    source: input.referralSource || input.attribution.referralSource || "Direct",
+    assignedOwnerId: resolveInquiryOwnerId(undefined, routing.owner),
+    assignedTo: routing.owner,
+    nextTouchAt: getDefaultNextTouchAt(routing.priority),
+    history: [
+      createActivityEntry(
+        "system",
+        "Inquiry received",
+        "Captured from the website inquiry flow and queued for team review.",
+        "System"
+      ),
+    ],
+    notes:
+      input.message ||
+      "Captured from the website inquiry flow and ready for internal qualification.",
+  };
+}

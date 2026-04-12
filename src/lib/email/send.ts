@@ -1,3 +1,6 @@
+import type { InquiryRouting } from "@/types";
+import type { InquiryAttribution } from "@/types";
+
 interface EmailOptions {
   to: string;
   subject: string;
@@ -54,20 +57,59 @@ export function contactEmailHtml(data: {
   name: string;
   email: string;
   company?: string;
+  website?: string;
   services: string[];
   budget?: string;
+  timeline?: string;
+  projectFocus?: string;
+  referralSource?: string;
+  region?: string;
+  goals?: string;
   message: string;
+  consent?: boolean;
+  routing: InquiryRouting;
+  attribution?: InquiryAttribution;
 }): string {
   const name = escapeHtml(data.name);
   const email = escapeHtml(data.email);
   const company = data.company ? escapeHtml(data.company) : "";
+  const website = data.website ? escapeHtml(data.website) : "";
   const services = data.services.map(escapeHtml);
   const budget = data.budget ? escapeHtml(data.budget) : "";
+  const timeline = data.timeline ? escapeHtml(data.timeline) : "";
+  const projectFocus = data.projectFocus ? escapeHtml(data.projectFocus) : "";
+  const referralSource = data.referralSource ? escapeHtml(data.referralSource) : "";
+  const region = data.region ? escapeHtml(data.region) : "";
+  const goals = data.goals ? escapeHtml(data.goals) : "";
   const message = data.message ? escapeHtml(data.message) : "";
+  const routing = {
+    team: escapeHtml(data.routing.team),
+    owner: escapeHtml(data.routing.owner),
+    fit: escapeHtml(data.routing.fit),
+    nextStep: escapeHtml(data.routing.nextStep),
+    priority: escapeHtml(data.routing.priority),
+  };
+  const attribution = {
+    intent: data.attribution?.intent ? escapeHtml(data.attribution.intent) : "",
+    referralSource: data.attribution?.referralSource ? escapeHtml(data.attribution.referralSource) : "",
+    landingPath: data.attribution?.landingPath ? escapeHtml(data.attribution.landingPath) : "",
+    referrer: data.attribution?.referrer ? escapeHtml(data.attribution.referrer) : "",
+    utmSource: data.attribution?.utmSource ? escapeHtml(data.attribution.utmSource) : "",
+    utmMedium: data.attribution?.utmMedium ? escapeHtml(data.attribution.utmMedium) : "",
+    utmCampaign: data.attribution?.utmCampaign ? escapeHtml(data.attribution.utmCampaign) : "",
+    utmContent: data.attribution?.utmContent ? escapeHtml(data.attribution.utmContent) : "",
+  };
 
   return `
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #E8E4DE; background: #0A0A0A; padding: 40px;">
       <h1 style="font-size: 24px; color: #C8956C; margin-bottom: 24px;">New Project Inquiry</h1>
+
+      <div style="margin-bottom: 28px; border: 1px solid #252525; background: #141414; padding: 20px;">
+        <p style="margin: 0; color: #8A8680; font-size: 12px; text-transform: uppercase; letter-spacing: 0.12em;">Routing summary</p>
+        <p style="margin: 12px 0 0; font-size: 20px; color: #E8E4DE;">${routing.team}</p>
+        <p style="margin: 8px 0 0; color: #8A8680; font-size: 14px;">Owner: ${routing.owner} | Fit: ${routing.fit} | Priority: ${routing.priority}</p>
+        <p style="margin: 12px 0 0; line-height: 1.6; color: #E8E4DE;">${routing.nextStep}</p>
+      </div>
 
       <table style="width: 100%; border-collapse: collapse;">
         <tr>
@@ -90,11 +132,56 @@ export function contactEmailHtml(data: {
             : ""
         }
         ${
+          website
+            ? `
+        <tr>
+          <td style="padding: 12px 0; border-bottom: 1px solid #252525; color: #8A8680;">Website</td>
+          <td style="padding: 12px 0; border-bottom: 1px solid #252525;">${website}</td>
+        </tr>`
+            : ""
+        }
+        ${
           services.length > 0
             ? `
         <tr>
           <td style="padding: 12px 0; border-bottom: 1px solid #252525; color: #8A8680;">Services</td>
           <td style="padding: 12px 0; border-bottom: 1px solid #252525;">${services.join(", ")}</td>
+        </tr>`
+            : ""
+        }
+        ${
+          timeline
+            ? `
+        <tr>
+          <td style="padding: 12px 0; border-bottom: 1px solid #252525; color: #8A8680;">Timeline</td>
+          <td style="padding: 12px 0; border-bottom: 1px solid #252525;">${timeline}</td>
+        </tr>`
+            : ""
+        }
+        ${
+          projectFocus
+            ? `
+        <tr>
+          <td style="padding: 12px 0; border-bottom: 1px solid #252525; color: #8A8680;">Project focus</td>
+          <td style="padding: 12px 0; border-bottom: 1px solid #252525;">${projectFocus}</td>
+        </tr>`
+            : ""
+        }
+        ${
+          referralSource
+            ? `
+        <tr>
+          <td style="padding: 12px 0; border-bottom: 1px solid #252525; color: #8A8680;">Source</td>
+          <td style="padding: 12px 0; border-bottom: 1px solid #252525;">${referralSource}</td>
+        </tr>`
+            : ""
+        }
+        ${
+          region
+            ? `
+        <tr>
+          <td style="padding: 12px 0; border-bottom: 1px solid #252525; color: #8A8680;">Region</td>
+          <td style="padding: 12px 0; border-bottom: 1px solid #252525;">${region}</td>
         </tr>`
             : ""
         }
@@ -109,6 +196,29 @@ export function contactEmailHtml(data: {
         }
       </table>
 
+      <div style="margin-top: 24px; border-top: 1px solid #252525; padding-top: 20px;">
+        <p style="color: #8A8680; margin-bottom: 8px;">Attribution</p>
+        <p style="line-height: 1.8; color: #E8E4DE;">
+          Intent: ${attribution.intent || "n/a"}<br />
+          Referral source: ${attribution.referralSource || "n/a"}<br />
+          Landing path: ${attribution.landingPath || "n/a"}<br />
+          Referrer: ${attribution.referrer || "n/a"}<br />
+          UTM source / medium: ${attribution.utmSource || "n/a"} / ${attribution.utmMedium || "n/a"}<br />
+          UTM campaign: ${attribution.utmCampaign || "n/a"}<br />
+          UTM content: ${attribution.utmContent || "n/a"}
+        </p>
+      </div>
+
+      ${
+        goals
+          ? `
+      <div style="margin-top: 24px;">
+        <p style="color: #8A8680; margin-bottom: 8px;">Success looks like</p>
+        <p style="line-height: 1.6; white-space: pre-wrap;">${goals}</p>
+      </div>`
+          : ""
+      }
+
       ${
         message
           ? `
@@ -120,7 +230,7 @@ export function contactEmailHtml(data: {
       }
 
       <hr style="border: none; border-top: 1px solid #252525; margin: 32px 0;" />
-      <p style="font-size: 12px; color: #4A4744;">Sent from muse.agency contact form</p>
+      <p style="font-size: 12px; color: #4A4744;">Consent captured: ${data.consent ? "yes" : "no"} | Sent from muse.agency contact form</p>
     </div>
   `;
 }

@@ -1,0 +1,1291 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import {
+  ArrowUpRight,
+  CalendarClock,
+  LoaderCircle,
+  Radar,
+  Save,
+  Search,
+  Sparkles,
+  UserRound,
+} from "lucide-react";
+import {
+  getViewerOwnerId,
+  inquiryOwners,
+  resolveInquiryOwnerName,
+} from "@/lib/inquiries/owners";
+import {
+  describeQueueActionReason,
+  filterInquiryPipeline,
+  getNextBestInquiry,
+  isFollowUpDue,
+  serializeQueueFilters,
+  toTimestamp,
+  type DeliveryFilter,
+  type QueueView,
+} from "@/lib/inquiries/queue";
+import { Reveal } from "@/components/ui/reveal";
+import { StatusBadge } from "@/components/ui/status-badge";
+import type { InquiryPreview } from "@/types";
+
+interface InquiryPipelineProps {
+  inquiries: InquiryPreview[];
+  viewerName: string;
+}
+
+type SavedQueuePreset = {
+  key: string;
+  label: string;
+  description: string;
+  filters: {
+    queueView?: QueueView;
+    status?: InquiryPreview["status"] | "all";
+    fit?: InquiryPreview["routing"]["fit"] | "all";
+    priority?: InquiryPreview["routing"]["priority"] | "all";
+    delivery?: DeliveryFilter;
+    owner?: string;
+    followUp?: boolean;
+  };
+};
+type ResolvedSavedQueuePreset = SavedQueuePreset & {
+  count: number;
+  active: boolean;
+};
+
+const statusOptions = [
+  "New",
+  "Qualified",
+  "Discovery scheduled",
+  "Proposal drafted",
+] as const satisfies InquiryPreview["status"][];
+const fitOptions = ["Strategic", "Build-ready", "Nurture"] as const satisfies InquiryPreview["routing"]["fit"][];
+const priorityOptions = ["high", "medium", "low"] as const satisfies InquiryPreview["routing"]["priority"][];
+const queueViewLabels: Record<QueueView, string> = {
+  all: "All inquiries",
+  mine: "My queue",
+  urgent: "Urgent queue",
+  "follow-up": "Follow-up queue",
+  proposal: "Proposal runway",
+};
+
+function priorityVariant(priority: InquiryPreview["routing"]["priority"]) {
+  if (priority === "high") return "warning";
+  if (priority === "medium") return "accent";
+  return "neutral";
+}
+
+function formatTimestamp(value?: string, options?: Intl.DateTimeFormatOptions) {
+  if (!value) {
+    return null;
+  }
+
+  const timestamp = toTimestamp(value);
+
+  if (timestamp === null) {
+    return null;
+  }
+
+  const date = new Date(timestamp);
+
+  return new Intl.DateTimeFormat(
+    "en-GB",
+    options ?? {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }
+  ).format(date);
+}
+
+function toDateInputValue(value?: string) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toISOString().slice(0, 10);
+}
+
+function toIsoDate(value: string) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(`${value}T09:00:00.000Z`);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+export function InquiryPipeline({ inquiries, viewerName }: InquiryPipelineProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [items, setItems] = useState(inquiries);
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Record<string, string>>({});
+  const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
+  const [statusFilter, setStatusFilter] = useState<InquiryPreview["status"] | "all">(() => {
+    const value = searchParams.get("status");
+    return value && statusOptions.includes(value as InquiryPreview["status"])
+      ? (value as InquiryPreview["status"])
+      : "all";
+  });
+  const [fitFilter, setFitFilter] = useState<InquiryPreview["routing"]["fit"] | "all">(() => {
+    const value = searchParams.get("fit");
+    return value && fitOptions.includes(value as InquiryPreview["routing"]["fit"])
+      ? (value as InquiryPreview["routing"]["fit"])
+      : "all";
+  });
+  const [priorityFilter, setPriorityFilter] = useState<InquiryPreview["routing"]["priority"] | "all">(
+    () => {
+      const value = searchParams.get("priority");
+      return value && priorityOptions.includes(value as InquiryPreview["routing"]["priority"])
+        ? (value as InquiryPreview["routing"]["priority"])
+        : "all";
+    }
+  );
+  const [deliveryFilter, setDeliveryFilter] = useState<DeliveryFilter>(() => {
+    const value = searchParams.get("delivery");
+    return value === "pending" || value === "delivered" ? value : "all";
+  });
+  const [ownerFilter, setOwnerFilter] = useState<string>(() => searchParams.get("owner") ?? "all");
+  const [followUpFilter, setFollowUpFilter] = useState(() => searchParams.get("followUp") === "1");
+  const [queueView, setQueueView] = useState<QueueView>(() => {
+    const value = searchParams.get("view");
+    return value === "mine" ||
+      value === "urgent" ||
+      value === "follow-up" ||
+      value === "proposal"
+      ? value
+      : "all";
+  });
+  const viewerOwnerId = useMemo(() => getViewerOwnerId(viewerName), [viewerName]);
+  const ownerOptions = useMemo(() => inquiryOwners, []);
+  const hasActiveFilters =
+    search.trim().length > 0 ||
+    statusFilter !== "all" ||
+    fitFilter !== "all" ||
+    priorityFilter !== "all" ||
+    deliveryFilter !== "all" ||
+    ownerFilter !== "all" ||
+    followUpFilter ||
+    queueView !== "all";
+
+  useEffect(() => {
+    setItems(inquiries);
+  }, [inquiries]);
+
+  useEffect(() => {
+    const nextSearch = searchParams.get("q") ?? "";
+    const nextStatus = searchParams.get("status");
+    const nextFit = searchParams.get("fit");
+    const nextPriority = searchParams.get("priority");
+    const nextDelivery = searchParams.get("delivery");
+    const nextOwner = searchParams.get("owner") ?? "all";
+    const nextFollowUp = searchParams.get("followUp") === "1";
+    const nextView = searchParams.get("view");
+
+    setSearch(nextSearch);
+    setStatusFilter(
+      nextStatus && statusOptions.includes(nextStatus as InquiryPreview["status"])
+        ? (nextStatus as InquiryPreview["status"])
+        : "all"
+    );
+    setFitFilter(
+      nextFit && fitOptions.includes(nextFit as InquiryPreview["routing"]["fit"])
+        ? (nextFit as InquiryPreview["routing"]["fit"])
+        : "all"
+    );
+    setPriorityFilter(
+      nextPriority && priorityOptions.includes(nextPriority as InquiryPreview["routing"]["priority"])
+        ? (nextPriority as InquiryPreview["routing"]["priority"])
+        : "all"
+    );
+    setDeliveryFilter(
+      nextDelivery === "pending" || nextDelivery === "delivered" ? nextDelivery : "all"
+    );
+    setOwnerFilter(nextOwner);
+    setFollowUpFilter(nextFollowUp);
+    setQueueView(
+      nextView === "mine" ||
+        nextView === "urgent" ||
+        nextView === "follow-up" ||
+        nextView === "proposal"
+        ? nextView
+        : "all"
+    );
+  }, [searchParams]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (search.trim()) {
+      params.set("q", search.trim());
+    } else {
+      params.delete("q");
+    }
+
+    if (statusFilter !== "all") {
+      params.set("status", statusFilter);
+    } else {
+      params.delete("status");
+    }
+
+    if (fitFilter !== "all") {
+      params.set("fit", fitFilter);
+    } else {
+      params.delete("fit");
+    }
+
+    if (priorityFilter !== "all") {
+      params.set("priority", priorityFilter);
+    } else {
+      params.delete("priority");
+    }
+
+    if (deliveryFilter !== "all") {
+      params.set("delivery", deliveryFilter);
+    } else {
+      params.delete("delivery");
+    }
+
+    if (ownerFilter !== "all") {
+      params.set("owner", ownerFilter);
+    } else {
+      params.delete("owner");
+    }
+
+    if (followUpFilter) {
+      params.set("followUp", "1");
+    } else {
+      params.delete("followUp");
+    }
+
+    if (queueView !== "all") {
+      params.set("view", queueView);
+    } else {
+      params.delete("view");
+    }
+
+    const nextQuery = params.toString();
+    const currentQuery = searchParams.toString();
+
+    if (nextQuery !== currentQuery) {
+      router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+    }
+  }, [
+    deliveryFilter,
+    fitFilter,
+    followUpFilter,
+    ownerFilter,
+    pathname,
+    priorityFilter,
+    queueView,
+    router,
+    search,
+    searchParams,
+    statusFilter,
+  ]);
+
+  const queueFilters = useMemo(
+    () => ({
+      search,
+      status: statusFilter,
+      fit: fitFilter,
+      priority: priorityFilter,
+      delivery: deliveryFilter,
+      owner: ownerFilter,
+      followUp: followUpFilter,
+      queueView,
+    }),
+    [deliveryFilter, fitFilter, followUpFilter, ownerFilter, priorityFilter, queueView, search, statusFilter]
+  );
+  const filteredItems = useMemo(
+    () =>
+      filterInquiryPipeline(items, queueFilters, {
+        viewerName,
+        viewerOwnerId,
+      }),
+    [items, queueFilters, viewerName, viewerOwnerId]
+  );
+  const viewerQueueCount = useMemo(
+    () =>
+      items.filter((inquiry) =>
+        viewerOwnerId
+          ? inquiry.assignedOwnerId === viewerOwnerId
+          : [inquiry.assignedTo, inquiry.routing.owner].some((value) => value === viewerName)
+      ).length,
+    [items, viewerName, viewerOwnerId]
+  );
+
+  const queueViews = useMemo(
+    () => [
+      {
+        value: "all" as const,
+        label: "All",
+        count: items.length,
+      },
+      {
+        value: "mine" as const,
+        label: "My queue",
+        count: viewerQueueCount,
+      },
+      {
+        value: "urgent" as const,
+        label: "Urgent",
+        count: items.filter((inquiry) => inquiry.routing.priority === "high").length,
+      },
+      {
+        value: "follow-up" as const,
+        label: "Follow-up due",
+        count: items.filter((inquiry) => isFollowUpDue(inquiry.nextTouchAt)).length,
+      },
+      {
+        value: "proposal" as const,
+        label: "Proposal drafted",
+        count: items.filter((inquiry) => inquiry.status === "Proposal drafted").length,
+      },
+    ],
+    [items, viewerQueueCount]
+  );
+  const savedQueuePresets = useMemo<ResolvedSavedQueuePreset[]>(() => {
+    const ownerFocusedPresets: SavedQueuePreset[] =
+      viewerQueueCount > 0
+        ? [
+            {
+              key: "my-urgent",
+              label: "My urgent",
+              description: "My highest-priority leads that need fast response and active triage.",
+              filters: { queueView: "mine", priority: "high" },
+            },
+            {
+              key: "my-proposals",
+              label: "My proposals",
+              description: "My proposal-stage opportunities that need commercial follow-through.",
+              filters: { queueView: "mine", status: "Proposal drafted" },
+            },
+            {
+              key: "my-pending-delivery",
+              label: "My pending delivery",
+              description: "My inquiries where the notification handoff still has not completed.",
+              filters: { queueView: "mine", delivery: "pending" },
+            },
+          ]
+        : [];
+    const presets: SavedQueuePreset[] = [
+      ...ownerFocusedPresets,
+      {
+        key: "my-overdue",
+        label: "My overdue",
+        description: "My queue with due follow-ups already in motion.",
+        filters: { queueView: "mine", followUp: true },
+      },
+      {
+        key: "strategic-qualified",
+        label: "Strategic qualified",
+        description: "Strong-fit qualified leads ready for tighter follow-through.",
+        filters: { status: "Qualified", fit: "Strategic" },
+      },
+      {
+        key: "urgent-unassigned",
+        label: "Urgent unassigned",
+        description: "Highest-risk routing gap needing immediate ownership.",
+        filters: { owner: "unassigned", priority: "high" },
+      },
+      {
+        key: "proposal-runway",
+        label: "Proposal runway",
+        description: "Proposal-stage opportunities that need commercial momentum.",
+        filters: { queueView: "proposal" },
+      },
+      {
+        key: "pending-delivery",
+        label: "Pending delivery",
+        description: "Inquiries where the notification handoff has not completed.",
+        filters: { delivery: "pending" },
+      },
+    ];
+
+    return presets.map((preset) => {
+      const count = filterInquiryPipeline(
+        items,
+        {
+          search: "",
+          status: preset.filters.status ?? "all",
+          fit: preset.filters.fit ?? "all",
+          priority: preset.filters.priority ?? "all",
+          delivery: preset.filters.delivery ?? "all",
+          owner: preset.filters.owner ?? "all",
+          followUp: Boolean(preset.filters.followUp),
+          queueView: preset.filters.queueView ?? "all",
+        },
+        {
+          viewerName,
+          viewerOwnerId,
+        }
+      ).length;
+      const active =
+        (preset.filters.queueView ?? "all") === queueView &&
+        (preset.filters.status ?? "all") === statusFilter &&
+        (preset.filters.fit ?? "all") === fitFilter &&
+        (preset.filters.priority ?? "all") === priorityFilter &&
+        (preset.filters.delivery ?? "all") === deliveryFilter &&
+        (preset.filters.owner ?? "all") === ownerFilter &&
+        Boolean(preset.filters.followUp) === followUpFilter &&
+        search.trim().length === 0;
+
+      return { ...preset, count, active };
+    });
+  }, [
+    deliveryFilter,
+    fitFilter,
+    followUpFilter,
+    items,
+    ownerFilter,
+    priorityFilter,
+    queueView,
+    search,
+    statusFilter,
+    viewerName,
+    viewerQueueCount,
+    viewerOwnerId,
+  ]);
+  const activePreset = useMemo(
+    () => savedQueuePresets.find((preset) => preset.active) ?? null,
+    [savedQueuePresets]
+  );
+  const focusMetrics = useMemo(
+    () => ({
+      visible: filteredItems.length,
+      urgent: filteredItems.filter((inquiry) => inquiry.routing.priority === "high").length,
+      overdue: filteredItems.filter((inquiry) => isFollowUpDue(inquiry.nextTouchAt)).length,
+      pendingDelivery: filteredItems.filter((inquiry) => inquiry.notificationDelivered === false)
+        .length,
+    }),
+    [filteredItems]
+  );
+  const activeFocusLabels = useMemo(() => {
+    const labels: string[] = [];
+
+    if (queueView !== "all") {
+      labels.push(queueViewLabels[queueView]);
+    }
+
+    if (statusFilter !== "all") {
+      labels.push(statusFilter);
+    }
+
+    if (fitFilter !== "all") {
+      labels.push(`${fitFilter} fit`);
+    }
+
+    if (priorityFilter !== "all") {
+      labels.push(`${priorityFilter} priority`);
+    }
+
+    if (deliveryFilter !== "all") {
+      labels.push(deliveryFilter === "pending" ? "Pending delivery" : "Delivered");
+    }
+
+    if (ownerFilter !== "all") {
+      labels.push(
+        ownerFilter === "unassigned"
+          ? "Unassigned owner"
+          : `Owner: ${resolveInquiryOwnerName(ownerFilter, ownerFilter)}`
+      );
+    }
+
+    if (followUpFilter) {
+      labels.push("Follow-up due");
+    }
+
+    if (search.trim()) {
+      labels.push(`Search: ${search.trim()}`);
+    }
+
+    return labels;
+  }, [deliveryFilter, fitFilter, followUpFilter, ownerFilter, priorityFilter, queueView, search, statusFilter]);
+  const focusSummary = useMemo(() => {
+    if (activePreset) {
+      return {
+        eyebrow: "Pinned focus",
+        title: activePreset.label,
+        description: activePreset.description,
+      };
+    }
+
+    if (hasActiveFilters) {
+      return {
+        eyebrow: "Custom focus",
+        title: queueView === "all" ? "Filtered working view" : queueViewLabels[queueView],
+        description:
+          "This shareable queue combines the current filters into a tighter operating view for daily follow-through.",
+      };
+    }
+
+    return {
+      eyebrow: "Baseline view",
+      title: "All live inquiries",
+      description:
+        "This full queue keeps routing gaps, commercial momentum, and handoff risk visible in one operational workspace.",
+    };
+  }, [activePreset, hasActiveFilters, queueView]);
+  const focusRecommendation = useMemo(() => {
+    if (focusMetrics.visible === 0) {
+      return "No inquiries match this focus right now. Reset to the full queue to reopen coverage.";
+    }
+
+    if (focusMetrics.overdue > 0) {
+      return `${focusMetrics.overdue} overdue follow-up${focusMetrics.overdue === 1 ? "" : "s"} should be worked first to protect response quality.`;
+    }
+
+    if (focusMetrics.pendingDelivery > 0) {
+      return `${focusMetrics.pendingDelivery} notification handoff${focusMetrics.pendingDelivery === 1 ? "" : "s"} still need delivery confirmation.`;
+    }
+
+    if (focusMetrics.urgent > 0) {
+      return `${focusMetrics.urgent} high-priority ${focusMetrics.urgent === 1 ? "lead is" : "leads are"} in view and ready for active triage.`;
+    }
+
+    return "This queue is stable right now, so the team can focus on proposal movement and qualification quality.";
+  }, [focusMetrics]);
+  const activeQueueSearch = useMemo(() => serializeQueueFilters(queueFilters), [queueFilters]);
+  const focusAction = useMemo(() => {
+    const inquiry = getNextBestInquiry(filteredItems);
+
+    if (!inquiry) {
+      return null;
+    }
+
+    return {
+      inquiry,
+      href: `/admin/inquiries/${inquiry.id}${activeQueueSearch ? `?${activeQueueSearch}` : ""}`,
+      ownerLabel: inquiry.assignedOwnerId
+        ? resolveInquiryOwnerName(
+            inquiry.assignedOwnerId,
+            inquiry.assignedTo ?? inquiry.routing.owner
+          )
+        : "Unassigned",
+      reason: describeQueueActionReason(inquiry),
+    };
+  }, [activeQueueSearch, filteredItems]);
+
+  function resetQueueFilters() {
+    setSearch("");
+    setStatusFilter("all");
+    setFitFilter("all");
+    setPriorityFilter("all");
+    setDeliveryFilter("all");
+    setOwnerFilter("all");
+    setFollowUpFilter(false);
+    setQueueView("all");
+  }
+
+  function updateInquiry(id: string, updates: Partial<InquiryPreview>) {
+    setItems((current) =>
+      current.map((item) => (item.id === id ? { ...item, ...updates } : item))
+    );
+  }
+
+  function applySavedPreset(preset: SavedQueuePreset) {
+    setSearch("");
+    setQueueView(preset.filters.queueView ?? "all");
+    setStatusFilter(preset.filters.status ?? "all");
+    setFitFilter(preset.filters.fit ?? "all");
+    setPriorityFilter(preset.filters.priority ?? "all");
+    setDeliveryFilter(preset.filters.delivery ?? "all");
+    setOwnerFilter(preset.filters.owner ?? "all");
+    setFollowUpFilter(Boolean(preset.filters.followUp));
+  }
+
+  function buildInquiryHref(id: string) {
+    return `/admin/inquiries/${id}${activeQueueSearch ? `?${activeQueueSearch}` : ""}`;
+  }
+
+  async function handleSave(id: string) {
+    const inquiry = items.find((item) => item.id === id);
+
+    if (!inquiry) {
+      return;
+    }
+
+    setSavingId(id);
+    setMessages((current) => ({ ...current, [id]: "" }));
+
+    try {
+      const response = await fetch(`/api/admin/inquiries/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: inquiry.status,
+          notes: inquiry.notes,
+          assignedOwnerId: inquiry.assignedOwnerId,
+          nextTouchAt: inquiry.nextTouchAt ?? null,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setMessages((current) => ({
+          ...current,
+          [id]: data.error ?? "Unable to update the inquiry right now.",
+        }));
+        return;
+      }
+
+      if (data.inquiry) {
+        updateInquiry(id, data.inquiry);
+      }
+
+      setMessages((current) => ({
+        ...current,
+        [id]: "Inquiry ops state saved.",
+      }));
+    } catch {
+      setMessages((current) => ({
+        ...current,
+        [id]: "Network error. Please try again.",
+      }));
+    } finally {
+      setSavingId(null);
+    }
+  }
+
+  return (
+    <section className="mt-16">
+      <Reveal>
+        <div className="flex flex-col gap-4 border-b border-[var(--color-border)] pb-6 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.3em] text-[var(--color-accent)]">
+              Inquiry pipeline
+            </p>
+            <h2 className="mt-3 font-display text-3xl font-bold tracking-tight">
+              Operational visibility for new business
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[var(--color-text-muted)]">
+              Inquiries now carry ownership, follow-up timing, and recent activity so the admin
+              shell feels like a real operations workspace rather than a static queue.
+            </p>
+          </div>
+          <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+            <Sparkles className="h-4 w-4 text-[var(--color-accent)]" />
+            {filteredItems.length} visible inquiries
+          </div>
+        </div>
+      </Reveal>
+
+      <Reveal delay={0.06}>
+        <div className="mt-8 border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-5">
+          <div className="flex flex-wrap gap-2 border-b border-[var(--color-border)] pb-5">
+            {queueViews.map((view) => (
+              <button
+                key={view.value}
+                type="button"
+                onClick={() => setQueueView(view.value)}
+                className={
+                  queueView === view.value
+                    ? "border border-[var(--color-accent)] bg-[var(--color-accent)] px-4 py-2 text-xs uppercase tracking-[0.18em] text-[var(--color-bg)] transition-all"
+                    : "border border-[var(--color-border)] px-4 py-2 text-xs uppercase tracking-[0.18em] text-[var(--color-text-muted)] transition-all hover:border-[var(--color-text-dim)] hover:text-[var(--color-text)]"
+                }
+              >
+                {view.label} ({view.count})
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-5 grid gap-3 border-b border-[var(--color-border)] pb-5 md:grid-cols-2 xl:grid-cols-4">
+            {savedQueuePresets.map((preset) => (
+              <button
+                key={preset.key}
+                type="button"
+                onClick={() => applySavedPreset(preset)}
+                className={
+                  preset.active
+                    ? "border border-[var(--color-accent)] bg-[var(--color-accent)]/12 p-4 text-left transition-colors"
+                    : "border border-[var(--color-border)] bg-[var(--color-bg)] p-4 text-left transition-colors hover:border-[var(--color-accent)]/35"
+                }
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+                    {preset.label}
+                  </p>
+                  <StatusBadge variant={preset.active ? "accent" : "neutral"}>
+                    {preset.count}
+                  </StatusBadge>
+                </div>
+                <p className="mt-3 text-sm leading-relaxed text-[var(--color-text-muted)]">
+                  {preset.description}
+                </p>
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-5 border-b border-[var(--color-border)] pb-5">
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+              <div className="border border-[var(--color-border)] bg-[var(--color-bg)] p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-accent)]">
+                      Today&apos;s focus
+                    </p>
+                    <h3 className="mt-3 font-display text-2xl font-bold tracking-tight">
+                      {focusSummary.title}
+                    </h3>
+                    <p className="mt-2 text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+                      {focusSummary.eyebrow}
+                    </p>
+                  </div>
+                  {hasActiveFilters ? (
+                    <button
+                      type="button"
+                      onClick={resetQueueFilters}
+                      className="text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)] transition-colors hover:text-[var(--color-text)]"
+                    >
+                      Clear all
+                    </button>
+                  ) : null}
+                </div>
+
+                <p className="mt-4 max-w-2xl text-sm leading-relaxed text-[var(--color-text-muted)]">
+                  {focusSummary.description}
+                </p>
+                <p className="mt-4 text-sm leading-relaxed text-[var(--color-text)]">
+                  {focusRecommendation}
+                </p>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <StatusBadge variant="accent">{focusSummary.eyebrow}</StatusBadge>
+                  {activeFocusLabels.length > 0 ? (
+                    activeFocusLabels.map((label) => <StatusBadge key={label}>{label}</StatusBadge>)
+                  ) : (
+                    <StatusBadge>Full queue coverage</StatusBadge>
+                  )}
+                </div>
+
+                {focusAction ? (
+                  <div className="mt-5 border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-4">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-accent)]">
+                          Next best action
+                        </p>
+                        <h4 className="mt-3 font-display text-2xl font-bold tracking-tight text-[var(--color-text)]">
+                          {focusAction.inquiry.company}
+                        </h4>
+                        <p className="mt-2 text-sm text-[var(--color-text-muted)]">
+                          {focusAction.inquiry.contact}
+                          {focusAction.inquiry.email ? ` | ${focusAction.inquiry.email}` : ""}
+                        </p>
+                        <p className="mt-3 text-sm leading-relaxed text-[var(--color-text)]">
+                          {focusAction.reason}
+                        </p>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <StatusBadge variant={priorityVariant(focusAction.inquiry.routing.priority)}>
+                            {focusAction.inquiry.routing.priority}
+                          </StatusBadge>
+                          <StatusBadge>{focusAction.inquiry.status}</StatusBadge>
+                          <StatusBadge>{focusAction.ownerLabel}</StatusBadge>
+                          {focusAction.inquiry.notificationDelivered === false ? (
+                            <StatusBadge variant="warning">Pending delivery</StatusBadge>
+                          ) : null}
+                          {isFollowUpDue(focusAction.inquiry.nextTouchAt) ? (
+                            <StatusBadge variant="warning">Follow-up due</StatusBadge>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <Link
+                        href={focusAction.href}
+                        className="inline-flex items-center gap-2 border border-[var(--color-text)] px-4 py-3 text-xs uppercase tracking-[0.18em] text-[var(--color-text)] transition-all hover:bg-[var(--color-text)] hover:text-[var(--color-bg)]"
+                      >
+                        Open next inquiry
+                        <ArrowUpRight className="h-4 w-4" />
+                      </Link>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                {[
+                  {
+                    label: "Visible now",
+                    value: focusMetrics.visible,
+                    detail: "Leads currently in this working view.",
+                  },
+                  {
+                    label: "Urgent priority",
+                    value: focusMetrics.urgent,
+                    detail: "High-priority inquiries needing active triage.",
+                  },
+                  {
+                    label: "Follow-up due",
+                    value: focusMetrics.overdue,
+                    detail: "Scheduled next touches already due.",
+                  },
+                  {
+                    label: "Pending delivery",
+                    value: focusMetrics.pendingDelivery,
+                    detail: "Notification handoffs still waiting to complete.",
+                  },
+                ].map((metric) => (
+                  <div
+                    key={metric.label}
+                    className="border border-[var(--color-border)] bg-[var(--color-bg)] p-4"
+                  >
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+                      {metric.label}
+                    </p>
+                    <p className="mt-3 font-display text-3xl font-bold tracking-tight text-[var(--color-text)]">
+                      {metric.value}
+                    </p>
+                    <p className="mt-2 text-sm leading-relaxed text-[var(--color-text-muted)]">
+                      {metric.detail}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+            <label className="block xl:col-span-2">
+              <span className="text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+                Search
+              </span>
+              <span className="mt-3 flex items-center gap-3 border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3">
+                <Search className="h-4 w-4 text-[var(--color-text-dim)]" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Company, contact, owner, or service"
+                  className="w-full bg-transparent text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-dim)] focus:outline-none"
+                />
+              </span>
+            </label>
+
+            <label className="block">
+              <span className="text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+                Status
+              </span>
+              <select
+                value={statusFilter}
+                onChange={(event) =>
+                  setStatusFilter(event.target.value as InquiryPreview["status"] | "all")
+                }
+                className="mt-3 w-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none"
+              >
+                <option value="all">All statuses</option>
+                {statusOptions.map((status) => (
+                  <option key={status} value={status} className="bg-[var(--color-bg)]">
+                    {status}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+                Fit
+              </span>
+              <select
+                value={fitFilter}
+                onChange={(event) =>
+                  setFitFilter(event.target.value as InquiryPreview["routing"]["fit"] | "all")
+                }
+                className="mt-3 w-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none"
+              >
+                <option value="all">All fit levels</option>
+                {fitOptions.map((fit) => (
+                  <option key={fit} value={fit} className="bg-[var(--color-bg)]">
+                    {fit}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+                Priority
+              </span>
+              <select
+                value={priorityFilter}
+                onChange={(event) =>
+                  setPriorityFilter(
+                    event.target.value as InquiryPreview["routing"]["priority"] | "all"
+                  )
+                }
+                className="mt-3 w-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm capitalize text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none"
+              >
+                <option value="all">All priorities</option>
+                {priorityOptions.map((priority) => (
+                  <option key={priority} value={priority} className="bg-[var(--color-bg)]">
+                    {priority}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+                Delivery
+              </span>
+              <select
+                value={deliveryFilter}
+                onChange={(event) => setDeliveryFilter(event.target.value as DeliveryFilter)}
+                className="mt-3 w-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none"
+              >
+                <option value="all">All delivery states</option>
+                <option value="pending" className="bg-[var(--color-bg)]">
+                  Pending email
+                </option>
+                <option value="delivered" className="bg-[var(--color-bg)]">
+                  Delivered
+                </option>
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+                Owner
+              </span>
+              <select
+                value={ownerFilter}
+                onChange={(event) => setOwnerFilter(event.target.value)}
+                className="mt-3 w-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none"
+              >
+                <option value="all">All owners</option>
+                <option value="unassigned">Unassigned</option>
+                {ownerOptions.map((owner) => (
+                  <option key={owner.id} value={owner.id} className="bg-[var(--color-bg)]">
+                    {owner.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="flex items-center gap-3 border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 md:col-span-2 xl:col-span-1 xl:mt-[1.55rem]">
+              <input
+                type="checkbox"
+                checked={followUpFilter}
+                onChange={(event) => setFollowUpFilter(event.target.checked)}
+                className="h-4 w-4 accent-[var(--color-accent)]"
+              />
+              <span className="text-sm text-[var(--color-text-muted)]">Follow-up due only</span>
+            </label>
+          </div>
+        </div>
+      </Reveal>
+
+      {filteredItems.length === 0 ? (
+        <Reveal delay={0.08}>
+          <div className="mt-8 border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-8 text-sm text-[var(--color-text-muted)]">
+            No inquiries match the current filters. Clear one of the filters to broaden the queue
+            again.
+          </div>
+        </Reveal>
+      ) : (
+        <div className="mt-8 grid gap-4 xl:grid-cols-2">
+          {filteredItems.map((inquiry, index) => {
+            const createdAt = formatTimestamp(inquiry.createdAt);
+            const updatedAt = formatTimestamp(inquiry.updatedAt);
+            const nextTouchAt = formatTimestamp(inquiry.nextTouchAt, {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            });
+            const history = inquiry.history ?? [];
+
+            return (
+              <Reveal key={inquiry.id} delay={index * 0.05}>
+                <div className="h-full border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                        {inquiry.status}
+                      </p>
+                      <h3 className="mt-4 font-display text-3xl font-bold tracking-tight">
+                        {inquiry.company}
+                      </h3>
+                      <p className="mt-2 text-sm text-[var(--color-text-muted)]">
+                        {inquiry.contact}
+                        {inquiry.email ? ` | ${inquiry.email}` : ""}
+                      </p>
+                    </div>
+                    <StatusBadge variant={priorityVariant(inquiry.routing.priority)}>
+                      {inquiry.routing.priority}
+                    </StatusBadge>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {inquiry.services.map((service) => (
+                      <StatusBadge key={`${inquiry.id}-${service}`} variant="accent">
+                        {service}
+                      </StatusBadge>
+                    ))}
+                    {inquiry.notificationDelivered === false && (
+                      <StatusBadge variant="warning">Email pending</StatusBadge>
+                    )}
+                    {isFollowUpDue(inquiry.nextTouchAt) && (
+                      <StatusBadge variant="warning">Follow-up due</StatusBadge>
+                    )}
+                  </div>
+
+                  <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                        Budget
+                      </p>
+                      <p className="mt-2 text-sm text-[var(--color-text)]">{inquiry.budget}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                        Timeline
+                      </p>
+                      <p className="mt-2 text-sm text-[var(--color-text)]">{inquiry.timeline}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                        Source
+                      </p>
+                      <p className="mt-2 text-sm text-[var(--color-text)]">{inquiry.source}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                        Fit
+                      </p>
+                      <p className="mt-2 text-sm text-[var(--color-text)]">{inquiry.routing.fit}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                        Region
+                      </p>
+                      <p className="mt-2 text-sm text-[var(--color-text)]">{inquiry.region}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                        Created
+                      </p>
+                      <p className="mt-2 text-sm text-[var(--color-text)]">
+                        {createdAt ?? "Preview seed"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 grid gap-4 border-t border-[var(--color-border)] pt-5 lg:grid-cols-2">
+                    <div>
+                      <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                        <UserRound className="h-4 w-4 text-[var(--color-accent)]" />
+                        Owner
+                      </div>
+                      <select
+                        value={inquiry.assignedOwnerId ?? ""}
+                        onChange={(event) =>
+                          updateInquiry(inquiry.id, {
+                            assignedOwnerId: event.target.value,
+                            assignedTo: resolveInquiryOwnerName(event.target.value, inquiry.assignedTo),
+                          })
+                        }
+                        className="mt-3 w-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none"
+                      >
+                        <option value="">Select owner</option>
+                        {ownerOptions.map((owner) => (
+                          <option key={owner.id} value={owner.id} className="bg-[var(--color-bg)]">
+                            {owner.name}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-3 text-xs uppercase tracking-[0.14em] text-[var(--color-text-dim)]">
+                        Suggested owner: {inquiry.routing.owner}
+                      </p>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                        <CalendarClock className="h-4 w-4 text-[var(--color-accent)]" />
+                        Next touch
+                      </div>
+                      <input
+                        type="date"
+                        value={toDateInputValue(inquiry.nextTouchAt)}
+                        onChange={(event) =>
+                          updateInquiry(inquiry.id, {
+                            nextTouchAt: toIsoDate(event.target.value) ?? undefined,
+                          })
+                        }
+                        className="mt-3 w-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none"
+                      />
+                      <p className="mt-3 text-xs uppercase tracking-[0.14em] text-[var(--color-text-dim)]">
+                        {nextTouchAt ? `Scheduled for ${nextTouchAt}` : "No follow-up date set"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 border-t border-[var(--color-border)] pt-5">
+                    <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                      <Radar className="h-4 w-4 text-[var(--color-accent)]" />
+                      Routing
+                    </div>
+                    <p className="mt-3 text-sm text-[var(--color-text)]">
+                      {inquiry.routing.team} | {inquiry.routing.owner}
+                    </p>
+                    <p className="mt-3 text-sm leading-relaxed text-[var(--color-text-muted)]">
+                      {inquiry.routing.nextStep}
+                    </p>
+                  </div>
+
+                  <div className="mt-6 border-t border-[var(--color-border)] pt-5">
+                    <label className="block text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                      Lifecycle status
+                    </label>
+                    <select
+                      value={inquiry.status}
+                      onChange={(event) =>
+                        updateInquiry(inquiry.id, {
+                          status: event.target.value as InquiryPreview["status"],
+                        })
+                      }
+                      className="mt-3 w-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none"
+                    >
+                      {statusOptions.map((status) => (
+                        <option key={status} value={status} className="bg-[var(--color-bg)]">
+                          {status}
+                        </option>
+                      ))}
+                    </select>
+
+                    <label className="mt-5 block text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                      Internal notes
+                    </label>
+                    <textarea
+                      rows={4}
+                      maxLength={1500}
+                      value={inquiry.notes}
+                      onChange={(event) =>
+                        updateInquiry(inquiry.id, {
+                          notes: event.target.value,
+                        })
+                      }
+                      className="mt-3 w-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm leading-relaxed text-[var(--color-text)] placeholder:text-[var(--color-text-dim)] focus:border-[var(--color-accent)] focus:outline-none"
+                    />
+
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                      <div className="text-xs uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+                        {updatedAt ? `Updated ${updatedAt}` : "Preview data"}
+                      </div>
+                      <button
+                        type="button"
+                        disabled={savingId === inquiry.id}
+                        onClick={() => handleSave(inquiry.id)}
+                        className="inline-flex items-center gap-2 border border-[var(--color-text)] px-4 py-2 text-xs uppercase tracking-[0.18em] text-[var(--color-text)] transition-all hover:bg-[var(--color-text)] hover:text-[var(--color-bg)] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {savingId === inquiry.id ? (
+                          <>
+                            <LoaderCircle className="h-4 w-4 animate-spin" />
+                            Saving
+                          </>
+                        ) : (
+                          <>
+                            <Save className="h-4 w-4" />
+                            Save ops state
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {messages[inquiry.id] ? (
+                      <p className="mt-3 text-xs uppercase tracking-[0.14em] text-[var(--color-accent)]">
+                        {messages[inquiry.id]}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  {(inquiry.goals || inquiry.message || history.length > 0) && (
+                    <div className="mt-6 grid gap-4 border-t border-[var(--color-border)] pt-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                          Brief context
+                        </p>
+                        <div className="mt-3 space-y-3">
+                          {inquiry.goals ? (
+                            <p className="text-sm leading-relaxed text-[var(--color-text-muted)]">
+                              {inquiry.goals}
+                            </p>
+                          ) : null}
+                          {inquiry.message ? (
+                            <p className="text-sm leading-relaxed text-[var(--color-text-dim)]">
+                              {inquiry.message}
+                            </p>
+                          ) : null}
+                          {!inquiry.goals && !inquiry.message ? (
+                            <p className="text-sm leading-relaxed text-[var(--color-text-dim)]">
+                              No extended project brief attached yet.
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                          Recent activity
+                        </p>
+                        <div className="mt-3 space-y-3">
+                          {history.slice(0, 2).map((entry) => (
+                            <div
+                              key={entry.id}
+                              className="border border-[var(--color-border)] bg-[var(--color-bg)] p-3"
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-accent)]">
+                                  {entry.label}
+                                </p>
+                                <p className="text-[10px] uppercase tracking-[0.14em] text-[var(--color-text-dim)]">
+                                  {formatTimestamp(entry.createdAt) ?? "Now"}
+                                </p>
+                              </div>
+                              <p className="mt-2 text-sm leading-relaxed text-[var(--color-text-muted)]">
+                                {entry.detail}
+                              </p>
+                              <p className="mt-2 text-[10px] uppercase tracking-[0.14em] text-[var(--color-text-dim)]">
+                                {entry.actor}
+                              </p>
+                            </div>
+                          ))}
+                          {history.length === 0 ? (
+                            <p className="text-sm leading-relaxed text-[var(--color-text-dim)]">
+                              No operational activity recorded yet.
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mt-6 inline-flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                    <Link
+                      href={buildInquiryHref(inquiry.id)}
+                      className="inline-flex items-center gap-2 transition-colors hover:text-[var(--color-accent)]"
+                    >
+                      Open inquiry brief
+                      <ArrowUpRight className="h-4 w-4 text-[var(--color-accent)]" />
+                    </Link>
+                  </div>
+                </div>
+              </Reveal>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}

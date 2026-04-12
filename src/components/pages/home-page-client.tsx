@@ -13,6 +13,7 @@ import {
   ScrubScale,
   TextSplitReveal,
 } from "@/components/gsap/scroll-animations";
+import { ConversionPanel } from "@/components/marketing/conversion-panel";
 import { Marquee } from "@/components/ui/marquee";
 import { Reveal } from "@/components/ui/reveal";
 import { SanityImage } from "@/components/ui/sanity-image";
@@ -305,6 +306,38 @@ export function HomePageClient({ homepage, services }: HomePageClientProps) {
         </div>
       </section>
 
+      <section className="border-t border-[var(--color-border)] px-8 py-24 lg:px-12">
+        <div className="mx-auto max-w-7xl">
+          <Reveal>
+            <p className="text-xs font-medium uppercase tracking-[0.3em] text-[var(--color-text-dim)]">
+              Why teams choose Muse
+            </p>
+            <h2 className="mt-3 max-w-3xl font-display text-4xl font-bold tracking-tight lg:text-5xl">
+              Premium execution backed by{" "}
+              <span className="italic text-[var(--color-accent)]">operational discipline</span>
+            </h2>
+          </Reveal>
+
+          <div className="mt-12 grid gap-6 lg:grid-cols-3">
+            {siteSettings.trustSignals.map((signal, index) => (
+              <Reveal key={signal.label} delay={index * 0.08}>
+                <div className="border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6">
+                  <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                    {signal.label}
+                  </p>
+                  <p className="mt-4 font-display text-3xl font-bold tracking-tight text-[var(--color-accent)]">
+                    {signal.value}
+                  </p>
+                  <p className="mt-4 text-sm leading-relaxed text-[var(--color-text-muted)]">
+                    {signal.description}
+                  </p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {testimonials.length > 0 && (
         <section className="border-t border-[var(--color-border)] px-8 py-32 lg:px-12">
           <div className="mx-auto max-w-7xl">
@@ -339,6 +372,21 @@ export function HomePageClient({ homepage, services }: HomePageClientProps) {
           </div>
         </section>
       )}
+
+      <section className="px-8 py-24 lg:px-12">
+        <div className="mx-auto max-w-6xl">
+          <Reveal>
+            <ConversionPanel
+              eyebrow="Planning a launch?"
+              title="Get the deck, then start a proposal-ready conversation"
+              description="The capability deck is built for internal sharing, while the inquiry flow captures enough context for a serious first response."
+              primaryHref="/contact?intent=proposal"
+              primaryLabel="Request proposal"
+              location="home"
+            />
+          </Reveal>
+        </div>
+      </section>
 
       <Marquee
         text="Let's create something extraordinary"

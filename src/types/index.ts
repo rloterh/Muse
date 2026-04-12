@@ -142,6 +142,71 @@ export interface ModerationTask {
   status: "Needs review" | "Scheduled" | "Published" | "In progress";
 }
 
+export type InquiryPriority = "low" | "medium" | "high";
+export type InquiryStatus = "New" | "Qualified" | "Discovery scheduled" | "Proposal drafted";
+
+export interface InquiryRouting {
+  team: string;
+  owner: string;
+  fit: "Strategic" | "Build-ready" | "Nurture";
+  nextStep: string;
+  priority: InquiryPriority;
+}
+
+export interface InquiryAttribution {
+  intent?: string;
+  referralSource?: string;
+  landingPath?: string;
+  referrer?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmContent?: string;
+}
+
+export interface InquiryActivityEntry {
+  id: string;
+  label: string;
+  detail: string;
+  actor: string;
+  kind: "system" | "assignment" | "status" | "note";
+  createdAt: string;
+}
+
+export interface InquiryOwner {
+  id: string;
+  name: string;
+  title: string;
+}
+
+export interface InquiryPreview {
+  id: string;
+  company: string;
+  contact: string;
+  email?: string;
+  website?: string;
+  budget: string;
+  timeline: string;
+  services: string[];
+  source: string;
+  region: string;
+  projectFocus?: string;
+  referralSource?: string;
+  status: InquiryStatus;
+  routing: InquiryRouting;
+  notes: string;
+  attribution?: InquiryAttribution;
+  goals?: string;
+  message?: string;
+  notificationDelivered?: boolean;
+  assignedOwnerId?: string;
+  assignedTo?: string;
+  nextTouchAt?: string;
+  history?: InquiryActivityEntry[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface SiteMetric {
   label: string;
   value: number;
@@ -149,14 +214,31 @@ export interface SiteMetric {
   note?: string;
 }
 
+export interface TrustSignal {
+  label: string;
+  value: string;
+  description: string;
+}
+
+export interface EngagementModel {
+  name: string;
+  summary: string;
+  bestFor: string;
+  timeline: string;
+}
+
 export interface SiteSettings {
   brandName: string;
   brandTagline: string;
   contactEmail: string;
   contactPhone: string;
+  discoveryCallHref: string;
   offices: string[];
   socials: { label: string; href: string }[];
   navLinks: { label: string; href: string; num: string }[];
   spotlightMetrics: SiteMetric[];
+  trustSignals: TrustSignal[];
+  engagementModels: EngagementModel[];
   moderationQueue: ModerationTask[];
+  inquiryPipeline: InquiryPreview[];
 }
