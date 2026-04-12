@@ -140,6 +140,21 @@ export interface ModerationTask {
   kind: "case-study" | "content" | "inquiry" | "service";
   priority: "low" | "medium" | "high";
   status: "Needs review" | "Scheduled" | "Published" | "In progress";
+  ownerId?: string;
+  ownerName?: string;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  history?: ModerationActivityEntry[];
+}
+
+export interface ModerationActivityEntry {
+  id: string;
+  label: string;
+  detail: string;
+  actor: string;
+  kind: "system" | "assignment" | "status" | "note" | "approval";
+  createdAt: string;
 }
 
 export type InquiryPriority = "low" | "medium" | "high";
@@ -227,6 +242,32 @@ export interface EngagementModel {
   timeline: string;
 }
 
+export interface RetainerPlan {
+  id: "discovery-sprint" | "launch-program" | "embedded-partnership";
+  name: string;
+  summary: string;
+  cadence: string;
+  priceFrom: string;
+  bestFor: string;
+  highlights: string[];
+  ctaLabel: string;
+}
+
+export interface BillingEventPreview {
+  id: string;
+  source: "stripe" | "system";
+  type: string;
+  label: string;
+  detail: string;
+  status: "pending" | "paid" | "failed" | "active" | "canceled" | "draft";
+  customer?: string;
+  planId?: RetainerPlan["id"];
+  subscriptionId?: string;
+  amount?: number;
+  currency?: string;
+  createdAt: string;
+}
+
 export interface SiteSettings {
   brandName: string;
   brandTagline: string;
@@ -239,6 +280,7 @@ export interface SiteSettings {
   spotlightMetrics: SiteMetric[];
   trustSignals: TrustSignal[];
   engagementModels: EngagementModel[];
+  retainerPlans: RetainerPlan[];
   moderationQueue: ModerationTask[];
   inquiryPipeline: InquiryPreview[];
 }

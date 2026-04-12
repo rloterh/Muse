@@ -3,15 +3,18 @@
 import Link from "next/link";
 import { BarChart3, Code2, Layers, Palette, Smartphone, Video } from "lucide-react";
 import { ConversionPanel } from "@/components/marketing/conversion-panel";
+import { RetainerPrograms } from "@/components/marketing/retainer-programs";
 import { Navigation } from "@/components/layout/navigation";
 import { Footer } from "@/components/layout/footer";
 import { Reveal, StaggerContainer, StaggerItem } from "@/components/ui/reveal";
 import { siteSettings } from "@/lib/site/config";
 import type { LucideIcon } from "lucide-react";
-import type { Service } from "@/types";
+import type { RetainerPlan, Service } from "@/types";
 
 interface ServicesPageClientProps {
   services: Service[];
+  retainerPlans: RetainerPlan[];
+  checkoutEnabled: boolean;
 }
 
 const iconMap: Record<string, LucideIcon> = {
@@ -39,7 +42,11 @@ function resolveIcon(iconName: string | undefined, index: number) {
   return iconMap[key] ?? fallbackIcons[index % fallbackIcons.length];
 }
 
-export function ServicesPageClient({ services }: ServicesPageClientProps) {
+export function ServicesPageClient({
+  services,
+  retainerPlans,
+  checkoutEnabled,
+}: ServicesPageClientProps) {
   return (
     <>
       <Navigation />
@@ -108,28 +115,27 @@ export function ServicesPageClient({ services }: ServicesPageClientProps) {
                           </div>
                         )}
                       </div>
-                  </div>
-
-                  {service.faqs && service.faqs.length > 0 && (
-                    <div className="mt-6 grid gap-4 lg:grid-cols-2">
-                      {service.faqs.map((faq) => (
-                        <div
-                          key={`${service._id}-${faq.question}`}
-                          className="border border-[var(--color-border)] bg-[var(--color-bg)] p-4"
-                        >
-                          <p className="text-sm font-medium text-[var(--color-text)]">
-                            {faq.question}
-                          </p>
-                          <p className="mt-3 text-sm leading-relaxed text-[var(--color-text-muted)]">
-                            {faq.answer}
-                          </p>
-                        </div>
-                      ))}
                     </div>
-                  )}
-                </div>
-              </Reveal>
-            );
+                    {service.faqs && service.faqs.length > 0 && (
+                      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+                        {service.faqs.map((faq) => (
+                          <div
+                            key={`${service._id}-${faq.question}`}
+                            className="border border-[var(--color-border)] bg-[var(--color-bg)] p-4"
+                          >
+                            <p className="text-sm font-medium text-[var(--color-text)]">
+                              {faq.question}
+                            </p>
+                            <p className="mt-3 text-sm leading-relaxed text-[var(--color-text-muted)]">
+                              {faq.answer}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </Reveal>
+              );
             })}
           </div>
         </div>
@@ -218,6 +224,25 @@ export function ServicesPageClient({ services }: ServicesPageClientProps) {
               </StaggerItem>
             ))}
           </StaggerContainer>
+        </div>
+      </section>
+
+      <section className="border-t border-[var(--color-border)] px-8 py-24 lg:px-12">
+        <div className="mx-auto max-w-7xl">
+          <Reveal>
+            <p className="text-xs font-medium uppercase tracking-[0.3em] text-[var(--color-text-dim)]">
+              Retainer commerce
+            </p>
+            <h2 className="mt-3 font-display text-4xl font-bold tracking-tight lg:text-5xl">
+              Commercial pathways built for serious engagements
+            </h2>
+            <p className="mt-4 max-w-3xl text-sm leading-relaxed text-[var(--color-text-muted)]">
+              Muse now supports subscription-ready retainer programs with downloadable engagement
+              briefs and an optional Stripe checkout path when billing is configured.
+            </p>
+          </Reveal>
+
+          <RetainerPrograms plans={retainerPlans} checkoutEnabled={checkoutEnabled} />
         </div>
       </section>
 

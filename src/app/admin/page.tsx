@@ -1,24 +1,37 @@
-import { ShieldAlert } from "lucide-react";
+import { ActivityFeed } from "@/components/admin/activity-feed";
 import { ConversionReporting } from "@/components/admin/conversion-reporting";
 import { InquiryOverview } from "@/components/admin/inquiry-overview";
 import { InquiryPipeline } from "@/components/admin/inquiry-pipeline";
 import { InviteUserCard } from "@/components/admin/invite-user-card";
+import { ModerationWorkspace } from "@/components/admin/moderation-workspace";
 import { PipelineHealth } from "@/components/admin/pipeline-health";
 import { QueuePlaybooks } from "@/components/admin/queue-playbooks";
+import { RevenueOperations } from "@/components/admin/revenue-operations";
 import { Footer } from "@/components/layout/footer";
 import { Navigation } from "@/components/layout/navigation";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Reveal } from "@/components/ui/reveal";
 import { requireViewerRole } from "@/lib/auth/viewer";
+import {
+  getStripeCustomerPortalConfigurationId,
+  isStripeConfigured,
+} from "@/lib/billing/env";
+import { getBillingEvents } from "@/lib/billing/repository";
 import { getInquiryPipeline } from "@/lib/inquiries/repository";
-import { inquirySummary, moderationSummary, siteSettings } from "@/lib/site/config";
-
-const summary = moderationSummary(siteSettings.moderationQueue);
+import { getModerationQueue } from "@/lib/moderation/repository";
+import { inquirySummary, moderationSummary } from "@/lib/site/config";
 
 export default async function AdminPage() {
   const viewer = await requireViewerRole("editor", "/admin");
-  const inquiries = await getInquiryPipeline();
+  const [inquiries, moderationTasks, billingEvents] = await Promise.all([
+    getInquiryPipeline(),
+    getModerationQueue(),
+    getBillingEvents(),
+  ]);
   const inquiryStats = inquirySummary(inquiries);
+  const moderationStats = moderationSummary(moderationTasks);
+  const stripeConfigured = isStripeConfigured();
+  const portalConfigured = Boolean(getStripeCustomerPortalConfigurationId());
 
   return (
     <>
@@ -52,14 +65,14 @@ export default async function AdminPage() {
               <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
                 Total queue
               </p>
-              <p className="mt-4 font-display text-5xl font-bold tracking-tight">{summary.total}</p>
+              <p className="mt-4 font-display text-5xl font-bold tracking-tight">{moderationStats.total}</p>
             </div>
             <div className="border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6">
               <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
                 Urgent review
               </p>
               <p className="mt-4 font-display text-5xl font-bold tracking-tight text-[var(--color-accent)]">
-                {summary.urgent}
+                {moderationStats.urgent}
               </p>
             </div>
             <div className="border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6">
@@ -67,7 +80,7 @@ export default async function AdminPage() {
                 Scheduled items
               </p>
               <p className="mt-4 font-display text-5xl font-bold tracking-tight">
-                {summary.scheduled}
+                {moderationStats.scheduled}
               </p>
             </div>
           </div>
@@ -107,44 +120,13 @@ export default async function AdminPage() {
             </div>
           </div>
 
-          <div className="mt-12 grid gap-4 lg:grid-cols-3">
-            {siteSettings.moderationQueue.map((task) => (
-              <div
-                key={task.id}
-                className="group border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6 transition-colors hover:border-[var(--color-accent)]/30"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="inline-flex items-center gap-2 text-[var(--color-text-dim)]">
-                    <ShieldAlert className="h-4 w-4 text-[var(--color-accent)]" />
-                    <span className="text-[10px] uppercase tracking-[0.24em]">
-                      {task.kind.replace("-", " ")}
-                    </span>
-                  </div>
-                  <StatusBadge
-                    variant={
-                      task.priority === "high"
-                        ? "warning"
-                        : task.priority === "medium"
-                          ? "accent"
-                          : "neutral"
-                    }
-                  >
-                    {task.priority}
-                  </StatusBadge>
-                </div>
-                <h2 className="mt-6 font-display text-2xl font-bold tracking-tight transition-colors group-hover:text-[var(--color-accent)]">
-                  {task.title}
-                </h2>
-                <p className="mt-3 text-sm leading-relaxed text-[var(--color-text-muted)]">
-                  {task.description}
-                </p>
-                <div className="mt-6 border-t border-[var(--color-border)] pt-4">
-                  <StatusBadge>{task.status}</StatusBadge>
-                </div>
-              </div>
-            ))}
-          </div>
-
+          <ModerationWorkspace tasks={moderationTasks} />
+          <ActivityFeed inquiries={inquiries} moderationTasks={moderationTasks} />
+          <RevenueOperations
+            events={billingEvents}
+            stripeConfigured={stripeConfigured}
+            portalConfigured={portalConfigured}
+          />
           <InquiryOverview inquiries={inquiries} />
           <PipelineHealth inquiries={inquiries} />
           <QueuePlaybooks inquiries={inquiries} viewerName={viewer.name} />

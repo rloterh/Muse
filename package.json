@@ -10,6 +10,7 @@
     "lint": "next lint",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
     "typecheck": "tsc --noEmit",
+    "content:check": "node scripts/check-content-sanity.mjs",
     "seed:auth": "node --env-file=.env.local scripts/seed-supabase-users.mjs",
     "qa:smoke": "node --env-file=.env.local ./node_modules/@playwright/test/cli.js test tests/smoke/auth-and-motion.spec.ts"
   },
