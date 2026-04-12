@@ -7,4 +7,9 @@ out/
 *.tsbuildinfo
 next-env.d.ts
 .vercel
-docs/
+.env.*
+.codex
+AGENTS.md
+playwright-report/
+test-results/
+supabase/.temp/

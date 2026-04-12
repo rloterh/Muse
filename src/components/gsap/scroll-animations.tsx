@@ -3,21 +3,16 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { cn } from "@/lib/utils/cn";
 
-// ============================================
-// GSAP LAZY LOADER
-// We load GSAP dynamically to avoid SSR issues
-// ============================================
+type GsapContext = {
+  revert: () => void;
+};
 
 async function loadGSAP() {
   const gsap = (await import("gsap")).default;
   const { ScrollTrigger } = await import("gsap/ScrollTrigger");
   gsap.registerPlugin(ScrollTrigger);
-  return { gsap, ScrollTrigger };
+  return gsap;
 }
-
-// ============================================
-// PARALLAX TEXT — moves at different speed on scroll
-// ============================================
 
 interface ParallaxTextProps {
   children: ReactNode;
@@ -30,9 +25,10 @@ export function ParallaxText({ children, speed = 0.5, className }: ParallaxTextP
 
   useEffect(() => {
     if (!ref.current) return;
-    let ctx: any;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let ctx: GsapContext | undefined;
 
-    loadGSAP().then(({ gsap, ScrollTrigger }) => {
+    loadGSAP().then((gsap) => {
       ctx = gsap.context(() => {
         gsap.to(ref.current, {
           yPercent: speed * -50,
@@ -57,10 +53,6 @@ export function ParallaxText({ children, speed = 0.5, className }: ParallaxTextP
   );
 }
 
-// ============================================
-// HORIZONTAL SCROLL — pins container, scrolls children horizontally
-// ============================================
-
 interface HorizontalScrollProps {
   children: ReactNode;
   className?: string;
@@ -72,10 +64,14 @@ export function HorizontalScroll({ children, className }: HorizontalScrollProps)
 
   useEffect(() => {
     if (!containerRef.current || !trackRef.current) return;
-    let ctx: any;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let ctx: GsapContext | undefined;
 
-    loadGSAP().then(({ gsap, ScrollTrigger }) => {
-      const track = trackRef.current!;
+    loadGSAP().then((gsap) => {
+      const track = trackRef.current;
+
+      if (!track) return;
+
       const scrollWidth = track.scrollWidth - window.innerWidth;
 
       ctx = gsap.context(() => {
@@ -105,10 +101,6 @@ export function HorizontalScroll({ children, className }: HorizontalScrollProps)
   );
 }
 
-// ============================================
-// NUMBER COUNTER — animates from 0 to target on scroll
-// ============================================
-
 interface CounterProps {
   target: number;
   suffix?: string;
@@ -121,9 +113,13 @@ export function Counter({ target, suffix = "", duration = 2, className }: Counte
 
   useEffect(() => {
     if (!ref.current) return;
-    let ctx: any;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      ref.current.textContent = Math.round(target) + suffix;
+      return;
+    }
+    let ctx: GsapContext | undefined;
 
-    loadGSAP().then(({ gsap, ScrollTrigger }) => {
+    loadGSAP().then((gsap) => {
       const obj = { value: 0 };
 
       ctx = gsap.context(() => {
@@ -148,12 +144,12 @@ export function Counter({ target, suffix = "", duration = 2, className }: Counte
     return () => ctx?.revert();
   }, [target, suffix, duration]);
 
-  return <span ref={ref} className={className}>0{suffix}</span>;
+  return (
+    <span ref={ref} className={className}>
+      0{suffix}
+    </span>
+  );
 }
-
-// ============================================
-// TEXT SPLIT REVEAL — each character animates in from below
-// ============================================
 
 interface TextRevealProps {
   text: string;
@@ -166,10 +162,13 @@ export function TextSplitReveal({ text, className, stagger = 0.03 }: TextRevealP
 
   useEffect(() => {
     if (!containerRef.current) return;
-    let ctx: any;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let ctx: GsapContext | undefined;
 
-    loadGSAP().then(({ gsap, ScrollTrigger }) => {
-      const chars = containerRef.current!.querySelectorAll(".split-char");
+    loadGSAP().then((gsap) => {
+      const chars = containerRef.current?.querySelectorAll<HTMLElement>(".split-char");
+
+      if (!chars) return;
 
       ctx = gsap.context(() => {
         gsap.from(chars, {
@@ -192,18 +191,18 @@ export function TextSplitReveal({ text, className, stagger = 0.03 }: TextRevealP
 
   return (
     <div ref={containerRef} className={cn("overflow-hidden", className)}>
-      {text.split("").map((char, i) => (
-        <span key={i} className="split-char inline-block" style={{ display: char === " " ? "inline" : "inline-block" }}>
+      {text.split("").map((char, index) => (
+        <span
+          key={`${char}-${index}`}
+          className="split-char inline-block"
+          style={{ display: char === " " ? "inline" : "inline-block" }}
+        >
           {char === " " ? "\u00A0" : char}
         </span>
       ))}
     </div>
   );
 }
-
-// ============================================
-// SCRUB SCALE — element scales on scroll progress
-// ============================================
 
 interface ScrubScaleProps {
   children: ReactNode;
@@ -217,42 +216,48 @@ export function ScrubScale({ children, className, from = 0.85, to = 1 }: ScrubSc
 
   useEffect(() => {
     if (!ref.current) return;
-    let ctx: any;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let ctx: GsapContext | undefined;
 
-    loadGSAP().then(({ gsap }) => {
+    loadGSAP().then((gsap) => {
       ctx = gsap.context(() => {
-        gsap.fromTo(ref.current, { scale: from, opacity: 0.6 }, {
-          scale: to,
-          opacity: 1,
-          ease: "none",
-          scrollTrigger: {
-            trigger: ref.current,
-            start: "top 90%",
-            end: "top 30%",
-            scrub: 1,
-          },
-        });
+        gsap.fromTo(
+          ref.current,
+          { scale: from, opacity: 0.6 },
+          {
+            scale: to,
+            opacity: 1,
+            ease: "none",
+            scrollTrigger: {
+              trigger: ref.current,
+              start: "top 90%",
+              end: "top 30%",
+              scrub: 1,
+            },
+          }
+        );
       });
     });
 
     return () => ctx?.revert();
   }, [from, to]);
 
-  return <div ref={ref} className={cn("will-change-transform", className)}>{children}</div>;
+  return (
+    <div ref={ref} className={cn("will-change-transform", className)}>
+      {children}
+    </div>
+  );
 }
-
-// ============================================
-// LINE DRAW — SVG line draws in on scroll
-// ============================================
 
 export function ScrollLine({ className }: { className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!ref.current) return;
-    let ctx: any;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let ctx: GsapContext | undefined;
 
-    loadGSAP().then(({ gsap }) => {
+    loadGSAP().then((gsap) => {
       ctx = gsap.context(() => {
         gsap.from(ref.current, {
           scaleY: 0,

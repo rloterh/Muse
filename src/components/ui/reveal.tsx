@@ -1,8 +1,7 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import type { ReactNode } from "react";
-import { cn } from "@/lib/utils/cn";
 
 interface RevealProps {
   children: ReactNode;
@@ -12,6 +11,7 @@ interface RevealProps {
 }
 
 export function Reveal({ children, className, delay = 0, direction = "up" }: RevealProps) {
+  const prefersReducedMotion = useReducedMotion();
   const initial = {
     opacity: 0,
     ...(direction === "up" && { y: 60 }),
@@ -23,12 +23,12 @@ export function Reveal({ children, className, delay = 0, direction = "up" }: Rev
 
   return (
     <motion.div
-      initial={initial}
-      whileInView={animate}
+      initial={prefersReducedMotion ? { opacity: 1 } : initial}
+      whileInView={prefersReducedMotion ? { opacity: 1 } : animate}
       viewport={{ once: true, margin: "-80px" }}
       transition={{
-        duration: 0.9,
-        delay,
+        duration: prefersReducedMotion ? 0 : 0.9,
+        delay: prefersReducedMotion ? 0 : delay,
         ease: [0.25, 0.46, 0.45, 0.94],
       }}
       className={className}
@@ -38,13 +38,27 @@ export function Reveal({ children, className, delay = 0, direction = "up" }: Rev
   );
 }
 
-export function RevealText({ children, className, delay = 0 }: { children: ReactNode; className?: string; delay?: number }) {
+export function RevealText({
+  children,
+  className,
+  delay = 0,
+}: {
+  children: ReactNode;
+  className?: string;
+  delay?: number;
+}) {
+  const prefersReducedMotion = useReducedMotion();
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
+      initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: 20 }}
+      whileInView={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
-      transition={{ duration: 0.7, delay, ease: [0.25, 0.46, 0.45, 0.94] }}
+      transition={{
+        duration: prefersReducedMotion ? 0 : 0.7,
+        delay: prefersReducedMotion ? 0 : delay,
+        ease: [0.25, 0.46, 0.45, 0.94],
+      }}
       className={className}
     >
       {children}
@@ -52,11 +66,21 @@ export function RevealText({ children, className, delay = 0 }: { children: React
   );
 }
 
-export function StaggerContainer({ children, className, stagger = 0.1 }: { children: ReactNode; className?: string; stagger?: number }) {
+export function StaggerContainer({
+  children,
+  className,
+  stagger = 0.1,
+}: {
+  children: ReactNode;
+  className?: string;
+  stagger?: number;
+}) {
+  const prefersReducedMotion = useReducedMotion();
+
   return (
     <motion.div
-      initial="hidden"
-      whileInView="show"
+      initial={prefersReducedMotion ? false : "hidden"}
+      whileInView={prefersReducedMotion ? undefined : "show"}
       viewport={{ once: true, margin: "-60px" }}
       variants={{
         hidden: { opacity: 0 },
@@ -70,12 +94,22 @@ export function StaggerContainer({ children, className, stagger = 0.1 }: { child
 }
 
 export function StaggerItem({ children, className }: { children: ReactNode; className?: string }) {
+  const prefersReducedMotion = useReducedMotion();
+
   return (
     <motion.div
-      variants={{
-        hidden: { opacity: 0, y: 30 },
-        show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] } },
-      }}
+      variants={
+        prefersReducedMotion
+          ? undefined
+          : {
+              hidden: { opacity: 0, y: 30 },
+              show: {
+                opacity: 1,
+                y: 0,
+                transition: { duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] },
+              },
+            }
+      }
       className={className}
     >
       {children}

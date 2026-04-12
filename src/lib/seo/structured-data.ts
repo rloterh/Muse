@@ -51,7 +51,7 @@ export function caseStudyJsonLd(study: CaseStudy): string {
     dateCreated: `${study.year}-01-01`,
     creator: { "@type": "Organization", name: "Muse Creative Agency" },
     client: study.client ? { "@type": "Organization", name: study.client } : undefined,
-    keywords: study.services?.map((s: any) => s.title).join(", "),
+    keywords: study.services?.map((service) => service.title).join(", "),
   });
 }
 

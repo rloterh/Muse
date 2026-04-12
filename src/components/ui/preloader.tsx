@@ -1,20 +1,23 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
 export function Preloader() {
+  const prefersReducedMotion = useReducedMotion();
   const [progress, setProgress] = useState(0);
-  const [complete, setComplete] = useState(false);
-  const [visible, setVisible] = useState(true);
+  const [visible, setVisible] = useState(!prefersReducedMotion);
 
   useEffect(() => {
-    // Simulate loading progress
+    if (prefersReducedMotion) {
+      setVisible(false);
+      return;
+    }
+
     const interval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 100) {
           clearInterval(interval);
-          setTimeout(() => setComplete(true), 300);
           setTimeout(() => setVisible(false), 1200);
           return 100;
         }
@@ -23,7 +26,7 @@ export function Preloader() {
     }, 100);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [prefersReducedMotion]);
 
   return (
     <AnimatePresence>
