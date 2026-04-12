@@ -54,11 +54,21 @@ export function Navigation() {
 
   return (
     <>
-      <header className="fixed left-0 right-0 top-0 z-50 flex h-20 items-center justify-between px-6 mix-blend-difference lg:px-12">
+      <header
+        className={cn(
+          "fixed left-0 right-0 top-0 z-[70] flex h-20 items-center justify-between px-6 lg:px-12",
+          isOpen ? "bg-[var(--color-bg)]/92 backdrop-blur" : "mix-blend-difference"
+        )}
+      >
         <Link href="/" className="relative z-50" onClick={closeOverlays}>
-          <span className="font-display text-xl font-bold tracking-tight text-white">
-            {siteSettings.brandName.toUpperCase()}
-          </span>
+              <span
+                className={cn(
+                  "font-display text-xl font-bold tracking-tight transition-colors",
+                  isOpen ? "text-[var(--color-text)]" : "text-white"
+                )}
+              >
+                {siteSettings.brandName.toUpperCase()}
+              </span>
         </Link>
 
         <div className="relative z-50 flex items-center gap-3">
@@ -68,7 +78,10 @@ export function Navigation() {
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  "text-[10px] font-medium uppercase tracking-[0.24em] text-white/75 transition-colors hover:text-white",
+                  "text-[10px] font-medium uppercase tracking-[0.24em] transition-colors",
+                  isOpen
+                    ? "text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                    : "text-white/75 hover:text-white",
                   pathname === link.href && "text-[var(--color-accent)]"
                 )}
               >
@@ -82,20 +95,28 @@ export function Navigation() {
           <button
             type="button"
             onClick={() => setMenuOpen(!isOpen)}
-            className="relative flex items-center gap-3"
-            aria-label={isOpen ? "Close menu" : "Open menu"}
-            aria-expanded={isOpen}
-            aria-controls="site-menu-overlay"
-          >
-            <span className="text-xs font-medium uppercase tracking-[0.3em] text-white">
-              {isOpen ? "Close" : "Menu"}
-            </span>
-            <div className="flex h-6 w-8 flex-col items-end justify-center gap-1.5">
+              className="relative flex items-center gap-3"
+              aria-label={isOpen ? "Close menu" : "Open menu"}
+              aria-expanded={isOpen}
+              aria-controls="site-menu-overlay"
+            >
+              <span
+                className={cn(
+                  "text-xs font-medium uppercase tracking-[0.3em] transition-colors",
+                  isOpen ? "text-[var(--color-text)]" : "text-white"
+                )}
+              >
+                {isOpen ? "Close" : "Menu"}
+              </span>
+              <div className="flex h-6 w-8 flex-col items-end justify-center gap-1.5">
               <motion.span
                 animate={
                   isOpen ? { rotate: 45, y: 4, width: "100%" } : { rotate: 0, y: 0, width: "100%" }
                 }
-                className="block h-[1.5px] bg-white"
+                className={cn(
+                  "block h-[1.5px] transition-colors",
+                  isOpen ? "bg-[var(--color-text)]" : "bg-white"
+                )}
                 style={{ width: "100%" }}
                 transition={{ duration: prefersReducedMotion ? 0 : 0.3 }}
               />
@@ -103,7 +124,10 @@ export function Navigation() {
                 animate={
                   isOpen ? { rotate: -45, y: -4, width: "100%" } : { rotate: 0, y: 0, width: "75%" }
                 }
-                className="block h-[1.5px] bg-white"
+                className={cn(
+                  "block h-[1.5px] transition-colors",
+                  isOpen ? "bg-[var(--color-text)]" : "bg-white"
+                )}
                 style={{ width: isOpen ? "100%" : "75%" }}
                 transition={{ duration: prefersReducedMotion ? 0 : 0.3 }}
               />
@@ -123,9 +147,10 @@ export function Navigation() {
             animate={{ opacity: 1 }}
             exit={prefersReducedMotion ? { opacity: 1 } : { opacity: 0 }}
             transition={{ duration: prefersReducedMotion ? 0 : 0.5 }}
-            className="fixed inset-0 z-40 flex bg-[var(--color-bg)]"
+            className="fixed inset-0 z-[60] overflow-y-auto bg-[var(--color-bg)]/96 backdrop-blur-md"
           >
-            <div className="flex flex-1 flex-col justify-center px-12 lg:px-24">
+            <div className="flex min-h-screen flex-col lg:flex-row">
+              <div className="flex flex-1 flex-col justify-center px-8 pb-12 pt-28 sm:px-12 lg:px-24 lg:pb-16 lg:pt-24">
               <nav className="space-y-2">
                 {overlayLinks.map((link, index) => (
                   <motion.div
@@ -161,86 +186,87 @@ export function Navigation() {
                   </motion.div>
                 ))}
               </nav>
-            </div>
+              </div>
 
-            <motion.div
-              initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{
-                duration: prefersReducedMotion ? 0 : 0.5,
-                delay: prefersReducedMotion ? 0 : 0.4,
-              }}
-              className="hidden w-80 flex-col justify-end p-12 lg:flex"
-            >
-              <div className="space-y-8">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.3em] text-[var(--color-text-dim)]">
-                    Get in touch
-                  </p>
-                  <a
-                    href={`mailto:${siteSettings.contactEmail}`}
-                    className="mt-2 block font-body text-lg text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-accent)]"
-                  >
-                    {siteSettings.contactEmail}
-                  </a>
-                </div>
-
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.3em] text-[var(--color-text-dim)]">
-                    Follow us
-                  </p>
-                  <div className="mt-3 flex flex-col gap-2">
-                    {siteSettings.socials.map((link) => (
-                      <a
-                        key={link.label}
-                        href={link.href}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="font-body text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-accent)]"
-                      >
-                        {link.label}
-                      </a>
-                    ))}
+              <motion.div
+                initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{
+                  duration: prefersReducedMotion ? 0 : 0.5,
+                  delay: prefersReducedMotion ? 0 : 0.4,
+                }}
+                className="border-t border-[var(--color-border)] px-8 py-10 lg:flex lg:w-80 lg:flex-col lg:justify-end lg:border-l lg:border-t-0 lg:p-12"
+              >
+                <div className="space-y-8">
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-[0.3em] text-[var(--color-text-dim)]">
+                      Get in touch
+                    </p>
+                    <a
+                      href={`mailto:${siteSettings.contactEmail}`}
+                      className="mt-2 block font-body text-lg text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-accent)]"
+                    >
+                      {siteSettings.contactEmail}
+                    </a>
                   </div>
-                </div>
 
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.3em] text-[var(--color-text-dim)]">
-                    Account
-                  </p>
-                  <div className="mt-3 space-y-2">
-                    {viewer ? (
-                      <>
-                        <p className="font-body text-sm text-[var(--color-text-muted)]">
-                          {viewer.name} | {viewer.role}
-                        </p>
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-[0.3em] text-[var(--color-text-dim)]">
+                      Follow us
+                    </p>
+                    <div className="mt-3 flex flex-col gap-2">
+                      {siteSettings.socials.map((link) => (
+                        <a
+                          key={link.label}
+                          href={link.href}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-body text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-accent)]"
+                        >
+                          {link.label}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-[0.3em] text-[var(--color-text-dim)]">
+                      Account
+                    </p>
+                    <div className="mt-3 space-y-2">
+                      {viewer ? (
+                        <>
+                          <p className="font-body text-sm text-[var(--color-text-muted)]">
+                            {viewer.name} | {viewer.role}
+                          </p>
+                          <Link
+                            href="/auth"
+                            onClick={closeOverlays}
+                            className="block text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-accent)]"
+                          >
+                            Manage account access
+                          </Link>
+                        </>
+                      ) : (
                         <Link
                           href="/auth"
                           onClick={closeOverlays}
                           className="block text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-accent)]"
                         >
-                          Manage account access
+                          Open secure sign in
                         </Link>
-                      </>
-                    ) : (
-                      <Link
-                        href="/auth"
-                        onClick={closeOverlays}
-                        className="block text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-accent)]"
-                      >
-                        Open secure sign in
-                      </Link>
-                    )}
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-[var(--color-text-dim)]">
+                      &copy; {new Date().getFullYear()} {siteSettings.brandName} Creative Agency
+                    </p>
                   </div>
                 </div>
-
-                <div>
-                  <p className="text-xs text-[var(--color-text-dim)]">
-                    &copy; {new Date().getFullYear()} {siteSettings.brandName} Creative Agency
-                  </p>
-                </div>
-              </div>
-            </motion.div>
+              </motion.div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

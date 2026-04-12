@@ -35,6 +35,12 @@ test.describe("Auth and motion smoke", () => {
 
     await expect(page.getByRole("heading", { name: /We craft digital experiences that move people/i })).toBeVisible();
     await expect(page.locator("canvas")).toHaveCount(1);
+    await page.getByRole("button", { name: /open menu/i }).click();
+    await expect(page.locator("#site-menu-overlay")).toBeVisible();
+    await expect(page.locator("#site-menu-overlay")).toContainText("Work");
+    await expect(page.locator("#site-menu-overlay")).toContainText("Services");
+    await page.getByRole("button", { name: /close menu/i }).click();
+    await expect(page.locator("#site-menu-overlay")).toHaveCount(0);
     await page.evaluate(() => window.scrollTo(0, window.innerHeight * 1.5));
     await page.waitForTimeout(1200);
 
