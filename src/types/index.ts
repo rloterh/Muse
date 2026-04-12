@@ -1,8 +1,35 @@
 import type { TypedObject } from "@portabletext/types";
 
-export type PortableTextBlock = TypedObject;
+export type PortableTextBlock = TypedObject & Record<string, unknown>;
 export type SanityAssetReference = { asset: unknown; alt?: string; caption?: string };
 export type SanityImageSource = SanityAssetReference | null;
+export interface ProofMetric {
+  label: string;
+  value: string;
+  context?: string;
+}
+
+export interface ProjectFact {
+  label: string;
+  value: string;
+  detail?: string;
+}
+
+export interface CaseStudyMilestone {
+  phase: string;
+  title: string;
+  summary: string;
+}
+
+export interface ResourceLink {
+  label: string;
+  href: string;
+}
+
+export interface FAQItem {
+  question: string;
+  answer: string;
+}
 
 export interface CaseStudy {
   _id: string;
@@ -18,12 +45,18 @@ export interface CaseStudy {
   featured?: boolean;
   status?: "draft" | "review" | "scheduled" | "published";
   deliverables?: string[];
-  outcomes?: { label: string; value: string; context?: string }[];
+  outcomes?: ProofMetric[];
   gallery?: SanityAssetReference[];
   services?: Service[];
   challenge?: PortableTextBlock[];
   approach?: PortableTextBlock[];
   results?: PortableTextBlock[];
+  timeline?: string;
+  teamSize?: string;
+  scope?: string;
+  projectFacts?: ProjectFact[];
+  milestones?: CaseStudyMilestone[];
+  links?: ResourceLink[];
   testimonial?: { quote: string; author: string; role: string };
   nextProject?: Pick<CaseStudy, "_id" | "title" | "slug" | "coverImage">;
   imageCount?: number;
@@ -38,6 +71,7 @@ export interface Service {
   features?: string[];
   order?: number;
   deliveryModel?: string;
+  faqs?: FAQItem[];
 }
 
 export interface TeamMember {
@@ -63,6 +97,20 @@ export interface Homepage {
   featuredWork: CaseStudy[];
   clientLogos?: SanityAssetReference[];
   testimonials?: Testimonial[];
+}
+
+export interface JournalPost {
+  _id: string;
+  title: string;
+  slug: { current: string };
+  excerpt: string;
+  publishedAt: string;
+  readTime: string;
+  category: string;
+  featured?: boolean;
+  coverImage?: SanityImageSource;
+  body: PortableTextBlock[];
+  relatedCaseStudies?: string[];
 }
 
 export type ViewerRole = "guest" | "client" | "editor" | "admin";

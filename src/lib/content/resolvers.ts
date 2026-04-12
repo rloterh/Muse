@@ -2,6 +2,8 @@ import {
   getCaseStudies,
   getCaseStudy,
   getHomepageData,
+  getJournalPost,
+  getJournalPosts,
   getServices,
   getTeamMembers,
 } from "@/lib/sanity/fetchers";
@@ -9,10 +11,11 @@ import { hasSanityEnv } from "@/lib/sanity/client";
 import {
   fallbackCaseStudies,
   fallbackHomepage,
+  fallbackJournalPosts,
   fallbackServices,
   fallbackTeamMembers,
 } from "@/lib/content/fallback-data";
-import type { CaseStudy, Homepage, Service } from "@/types";
+import type { CaseStudy, Homepage, JournalPost, Service } from "@/types";
 
 export async function resolveHomepageContent() {
   let homepage: Homepage = fallbackHomepage;
@@ -99,5 +102,31 @@ export async function resolveServices() {
     return data.length > 0 ? data : fallbackServices;
   } catch {
     return fallbackServices;
+  }
+}
+
+export async function resolveJournalPosts() {
+  if (!hasSanityEnv()) {
+    return fallbackJournalPosts;
+  }
+
+  try {
+    const data = await getJournalPosts();
+    return data.length > 0 ? data : fallbackJournalPosts;
+  } catch {
+    return fallbackJournalPosts;
+  }
+}
+
+export async function resolveJournalPostBySlug(slug: string): Promise<JournalPost | null> {
+  if (!hasSanityEnv()) {
+    return fallbackJournalPosts.find((item) => item.slug.current === slug) ?? null;
+  }
+
+  try {
+    const data = await getJournalPost(slug);
+    return data ?? fallbackJournalPosts.find((item) => item.slug.current === slug) ?? null;
+  } catch {
+    return fallbackJournalPosts.find((item) => item.slug.current === slug) ?? null;
   }
 }

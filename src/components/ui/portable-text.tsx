@@ -89,6 +89,60 @@ const components: PortableTextComponents = {
         <p className="text-sm leading-relaxed text-[var(--color-text)]">{value.text}</p>
       </div>
     ),
+    pullQuote: ({ value }) => (
+      <figure className="my-10 border-y border-[var(--color-border)] py-8">
+        <blockquote className="font-display text-2xl font-medium leading-relaxed text-[var(--color-text)] lg:text-3xl">
+          &ldquo;{value.quote}&rdquo;
+        </blockquote>
+        {value.attribution && (
+          <figcaption className="mt-4 text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+            {value.attribution}
+          </figcaption>
+        )}
+      </figure>
+    ),
+    metricGrid: ({ value }) => (
+      <div className="my-10 grid gap-4 md:grid-cols-2">
+        {value.items?.map(
+          (item: { label?: string; value?: string; context?: string }, index: number) => (
+            <div key={`${item.label}-${index}`} className="border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6">
+              <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                {item.label}
+              </p>
+              <p className="mt-3 font-display text-4xl font-bold tracking-tight text-[var(--color-accent)]">
+                {item.value}
+              </p>
+              {item.context && (
+                <p className="mt-3 text-sm leading-relaxed text-[var(--color-text-muted)]">
+                  {item.context}
+                </p>
+              )}
+            </div>
+          )
+        )}
+      </div>
+    ),
+    processTimeline: ({ value }) => (
+      <div className="my-10 space-y-4">
+        {value.items?.map(
+          (item: { label?: string; title?: string; summary?: string }, index: number) => (
+            <div key={`${item.title}-${index}`} className="grid gap-4 border border-[var(--color-border)] p-6 md:grid-cols-[120px_minmax(0,1fr)]">
+              <div className="text-xs uppercase tracking-[0.24em] text-[var(--color-text-dim)]">
+                {item.label}
+              </div>
+              <div>
+                <h3 className="font-display text-2xl font-bold tracking-tight">{item.title}</h3>
+                {item.summary && (
+                  <p className="mt-3 text-sm leading-relaxed text-[var(--color-text-muted)]">
+                    {item.summary}
+                  </p>
+                )}
+              </div>
+            </div>
+          )
+        )}
+      </div>
+    ),
     code: ({ value }) => (
       <pre className="my-8 overflow-x-auto bg-[var(--color-bg-surface)] p-6">
         <code className="font-mono text-sm text-[var(--color-text-muted)]">{value.code}</code>

@@ -15,8 +15,9 @@ export const siteSettings: SiteSettings = {
   navLinks: [
     { label: "Work", href: "/work", num: "01" },
     { label: "About", href: "/about", num: "02" },
-    { label: "Services", href: "/services", num: "03" },
-    { label: "Contact", href: "/contact", num: "04" },
+    { label: "Journal", href: "/journal", num: "03" },
+    { label: "Services", href: "/services", num: "04" },
+    { label: "Contact", href: "/contact", num: "05" },
   ],
   spotlightMetrics: [
     {

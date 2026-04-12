@@ -67,6 +67,53 @@ export const caseStudySchema = {
     { name: "challenge", title: "The Challenge", type: "array", of: [{ type: "block" }] },
     { name: "approach", title: "Our Approach", type: "array", of: [{ type: "block" }] },
     { name: "results", title: "Results", type: "array", of: [{ type: "block" }] },
+    { name: "timeline", title: "Timeline", type: "string" },
+    { name: "teamSize", title: "Team Size", type: "string" },
+    { name: "scope", title: "Scope", type: "string" },
+    {
+      name: "projectFacts",
+      title: "Project Facts",
+      type: "array",
+      of: [
+        {
+          type: "object",
+          fields: [
+            { name: "label", type: "string" },
+            { name: "value", type: "string" },
+            { name: "detail", type: "text", rows: 2 },
+          ],
+        },
+      ],
+    },
+    {
+      name: "milestones",
+      title: "Milestones",
+      type: "array",
+      of: [
+        {
+          type: "object",
+          fields: [
+            { name: "phase", type: "string" },
+            { name: "title", type: "string" },
+            { name: "summary", type: "text", rows: 3 },
+          ],
+        },
+      ],
+    },
+    {
+      name: "links",
+      title: "Project Links",
+      type: "array",
+      of: [
+        {
+          type: "object",
+          fields: [
+            { name: "label", type: "string" },
+            { name: "href", type: "string" },
+          ],
+        },
+      ],
+    },
     {
       name: "testimonial",
       title: "Testimonial",
@@ -92,6 +139,20 @@ export const serviceSchema = {
     { name: "icon", title: "Icon Name", type: "string" },
     { name: "features", title: "Features", type: "array", of: [{ type: "string" }] },
     { name: "deliveryModel", title: "Delivery Model", type: "string" },
+    {
+      name: "faqs",
+      title: "FAQs",
+      type: "array",
+      of: [
+        {
+          type: "object",
+          fields: [
+            { name: "question", type: "string" },
+            { name: "answer", type: "text", rows: 3 },
+          ],
+        },
+      ],
+    },
     { name: "order", title: "Sort Order", type: "number" },
   ],
 };
@@ -153,6 +214,87 @@ export const homepageSchema = {
           ],
         },
       ],
+    },
+  ],
+};
+
+export const journalPostSchema = {
+  name: "journalPost",
+  title: "Journal Post",
+  type: "document",
+  fields: [
+    { name: "title", title: "Title", type: "string" },
+    { name: "slug", title: "Slug", type: "slug", options: { source: "title" } },
+    { name: "excerpt", title: "Excerpt", type: "text", rows: 3 },
+    { name: "publishedAt", title: "Published At", type: "datetime" },
+    { name: "readTime", title: "Read Time", type: "string" },
+    { name: "category", title: "Category", type: "string" },
+    { name: "featured", title: "Featured", type: "boolean", initialValue: false },
+    { name: "coverImage", title: "Cover Image", type: "image", options: { hotspot: true } },
+    {
+      name: "body",
+      title: "Body",
+      type: "array",
+      of: [
+        { type: "block" },
+        {
+          type: "object",
+          name: "pullQuote",
+          title: "Pull Quote",
+          fields: [
+            { name: "quote", type: "text", rows: 3 },
+            { name: "attribution", type: "string" },
+          ],
+        },
+        {
+          type: "object",
+          name: "metricGrid",
+          title: "Metric Grid",
+          fields: [
+            {
+              name: "items",
+              type: "array",
+              of: [
+                {
+                  type: "object",
+                  fields: [
+                    { name: "label", type: "string" },
+                    { name: "value", type: "string" },
+                    { name: "context", type: "text", rows: 2 },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        {
+          type: "object",
+          name: "processTimeline",
+          title: "Process Timeline",
+          fields: [
+            {
+              name: "items",
+              type: "array",
+              of: [
+                {
+                  type: "object",
+                  fields: [
+                    { name: "label", type: "string" },
+                    { name: "title", type: "string" },
+                    { name: "summary", type: "text", rows: 3 },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "relatedCaseStudies",
+      title: "Related Case Studies",
+      type: "array",
+      of: [{ type: "reference", to: [{ type: "caseStudy" }] }],
     },
   ],
 };
