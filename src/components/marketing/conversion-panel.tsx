@@ -32,6 +32,8 @@ export function ConversionPanel({
   note,
   location = "shared",
 }: ConversionPanelProps) {
+  const discoveryCallIsExternal = /^https?:\/\//.test(tertiaryHref);
+
   return (
     <section className="border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-8 py-10 lg:px-10 lg:py-12">
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
@@ -92,25 +94,45 @@ export function ConversionPanel({
           </div>
 
           <div className="flex flex-wrap items-center gap-3 border-t border-[var(--color-border)] pt-4 sm:justify-end">
-            <a
-              href={tertiaryHref}
-              target="_blank"
-              rel="noreferrer"
-              onClick={() =>
-                trackEvent({
-                  name: "discovery_call_click",
-                  path: typeof window !== "undefined" ? window.location.pathname : tertiaryHref,
-                  label: tertiaryLabel,
-                  location,
-                  intent: "discovery-call",
-                  attribution: readStoredAttribution(),
-                })
-              }
-              className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.22em] text-[var(--color-text-dim)] transition-colors hover:text-[var(--color-accent)]"
-            >
-              <CalendarClock className="h-4 w-4 text-[var(--color-accent)]" />
-              {tertiaryLabel}
-            </a>
+            {discoveryCallIsExternal ? (
+              <a
+                href={tertiaryHref}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() =>
+                  trackEvent({
+                    name: "discovery_call_click",
+                    path: typeof window !== "undefined" ? window.location.pathname : tertiaryHref,
+                    label: tertiaryLabel,
+                    location,
+                    intent: "discovery-call",
+                    attribution: readStoredAttribution(),
+                  })
+                }
+                className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.22em] text-[var(--color-text-dim)] transition-colors hover:text-[var(--color-accent)]"
+              >
+                <CalendarClock className="h-4 w-4 text-[var(--color-accent)]" />
+                {tertiaryLabel}
+              </a>
+            ) : (
+              <Link
+                href={tertiaryHref}
+                onClick={() =>
+                  trackEvent({
+                    name: "discovery_call_click",
+                    path: typeof window !== "undefined" ? window.location.pathname : tertiaryHref,
+                    label: tertiaryLabel,
+                    location,
+                    intent: "discovery-call",
+                    attribution: readStoredAttribution(),
+                  })
+                }
+                className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.22em] text-[var(--color-text-dim)] transition-colors hover:text-[var(--color-accent)]"
+              >
+                <CalendarClock className="h-4 w-4 text-[var(--color-accent)]" />
+                {tertiaryLabel}
+              </Link>
+            )}
             <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
               Scheduling-ready CTA for live scoping
             </p>

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertCircle,
@@ -70,6 +71,7 @@ function chipClass(active: boolean) {
 }
 
 export default function ContactPage() {
+  const discoveryCallIsExternal = /^https?:\/\//.test(siteSettings.discoveryCallHref);
   const searchParams = useSearchParams();
   const [form, setForm] = useState(initialForm);
   const [sending, setSending] = useState(false);
@@ -275,25 +277,45 @@ export default function ContactPage() {
                     )}
 
                     <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                      <a
-                        href={siteSettings.discoveryCallHref}
-                        target="_blank"
-                        rel="noreferrer"
-                        onClick={() =>
-                          trackEvent({
-                            name: "discovery_call_click",
-                            path: "/contact",
-                            label: "success-book-discovery",
-                            location: "contact-success",
-                            intent: "discovery-call",
-                            attribution: readStoredAttribution(),
-                          })
-                        }
-                        className="inline-flex items-center justify-center gap-2 border border-[var(--color-text)] px-6 py-4 text-xs font-medium uppercase tracking-[0.22em] transition-all hover:bg-[var(--color-text)] hover:text-[var(--color-bg)]"
-                      >
-                        Book discovery call
-                        <CalendarClock className="h-4 w-4" />
-                      </a>
+                      {discoveryCallIsExternal ? (
+                        <a
+                          href={siteSettings.discoveryCallHref}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={() =>
+                            trackEvent({
+                              name: "discovery_call_click",
+                              path: "/contact",
+                              label: "success-book-discovery",
+                              location: "contact-success",
+                              intent: "discovery-call",
+                              attribution: readStoredAttribution(),
+                            })
+                          }
+                          className="inline-flex items-center justify-center gap-2 border border-[var(--color-text)] px-6 py-4 text-xs font-medium uppercase tracking-[0.22em] transition-all hover:bg-[var(--color-text)] hover:text-[var(--color-bg)]"
+                        >
+                          Book discovery call
+                          <CalendarClock className="h-4 w-4" />
+                        </a>
+                      ) : (
+                        <Link
+                          href={siteSettings.discoveryCallHref}
+                          onClick={() =>
+                            trackEvent({
+                              name: "discovery_call_click",
+                              path: "/contact",
+                              label: "success-book-discovery",
+                              location: "contact-success",
+                              intent: "discovery-call",
+                              attribution: readStoredAttribution(),
+                            })
+                          }
+                          className="inline-flex items-center justify-center gap-2 border border-[var(--color-text)] px-6 py-4 text-xs font-medium uppercase tracking-[0.22em] transition-all hover:bg-[var(--color-text)] hover:text-[var(--color-bg)]"
+                        >
+                          Book discovery call
+                          <CalendarClock className="h-4 w-4" />
+                        </Link>
+                      )}
                       <a
                         href="/api/capability-deck"
                         onClick={() =>
@@ -670,25 +692,45 @@ export default function ContactPage() {
                     intake context to make that first session more concrete.
                   </p>
                   <div className="mt-5 flex flex-col gap-3">
-                    <a
-                      href={siteSettings.discoveryCallHref}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={() =>
-                        trackEvent({
-                          name: "discovery_call_click",
-                          path: "/contact",
-                          label: "sidebar-book-discovery",
-                          location: "contact-sidebar",
-                          intent: "discovery-call",
-                          attribution: readStoredAttribution(),
-                        })
-                      }
-                      className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-[var(--color-text)] transition-colors hover:text-[var(--color-accent)]"
-                    >
-                      Book discovery call
-                      <CalendarClock className="h-4 w-4 text-[var(--color-accent)]" />
-                    </a>
+                    {discoveryCallIsExternal ? (
+                      <a
+                        href={siteSettings.discoveryCallHref}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={() =>
+                          trackEvent({
+                            name: "discovery_call_click",
+                            path: "/contact",
+                            label: "sidebar-book-discovery",
+                            location: "contact-sidebar",
+                            intent: "discovery-call",
+                            attribution: readStoredAttribution(),
+                          })
+                        }
+                        className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-[var(--color-text)] transition-colors hover:text-[var(--color-accent)]"
+                      >
+                        Book discovery call
+                        <CalendarClock className="h-4 w-4 text-[var(--color-accent)]" />
+                      </a>
+                    ) : (
+                      <Link
+                        href={siteSettings.discoveryCallHref}
+                        onClick={() =>
+                          trackEvent({
+                            name: "discovery_call_click",
+                            path: "/contact",
+                            label: "sidebar-book-discovery",
+                            location: "contact-sidebar",
+                            intent: "discovery-call",
+                            attribution: readStoredAttribution(),
+                          })
+                        }
+                        className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-[var(--color-text)] transition-colors hover:text-[var(--color-accent)]"
+                      >
+                        Book discovery call
+                        <CalendarClock className="h-4 w-4 text-[var(--color-accent)]" />
+                      </Link>
+                    )}
                     <a
                       href="/api/capability-deck"
                       onClick={() =>
